@@ -109,4 +109,4 @@ class Extract():
         
 
 # Run section
-ex = Extract()
+Extract()
