@@ -5,14 +5,5 @@
 #     print('New Movie Added!')
 
 
-# def rapid_api_gather(title, year):
-#     # rapid api gather to gather data for the movies
-#     url = f"https://moviesdatabase.p.rapidapi.com/titles/search/title/{title}"
 
-#     querystring = {"titleType":"movie", 'year': year}
-
-
-#     response = requests.get(url, headers=RAPID_HEADERS, params=querystring)
-
-#     return send_to_producer(response.json())
 
