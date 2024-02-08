@@ -1,10 +1,15 @@
-import requests
-import json
 from concurrent.futures import ThreadPoolExecutor
-import os
-from variables import MAX_WORKERS, TOTAL_PAGES, TMDB_HEADERS, RAPID_HEADERS
-from tqdm import tqdm
+from datetime import datetime
+import json
 import math
+import os
+import requests
+
+from tqdm import tqdm
+
+from kafka_interface import kafka_interface
+from variables import MAX_WORKERS, TOTAL_PAGES, TMDB_HEADERS, OMDB_API_KEY
+
 
 # Class that revolves around every extraction of data in the Project data will be transffered 
 # to Kafka Cluster (cloud cluster) for the next step of the proccess
@@ -106,31 +111,26 @@ class Extract():
         return {}
     
     
-    def rapid_fetch_data(self, params):
-        index = params['range_index'] * 10 + params['worker_number']
-        current_movie = self.new_movies[index]
+    def omdb_fetch_data(self, params):
         try: 
+            index = params['range_index'] * 10 + params['worker_number']
+            current_movie = self.new_movies[index]
             imdb_id = current_movie[1].get('imdb_id')
 
             if not imdb_id:
                 return {current_movie[0]: {'release_date': None}}
             
-            url = f"https://moviesdatabase.p.rapidapi.com/titles/{imdb_id}"
-            query = {"titleType": "movie"}
+            url = 'http://www.omdbapi.com/'
 
-            response = requests.get(url, headers=RAPID_HEADERS, params=query)
+            response = requests.get(url, params={"apikey": OMDB_API_KEY, "i": imdb_id})
             response_json = response.json()
-
-            if response_json.get('results'):
-                release_date = response_json['results'].get('releaseDate')
-                return {current_movie[0]: {'release_date': release_date}}
-            
+            original_date = datetime.strptime(response_json['Released'], "%d %b %Y")
+            formatted_date = original_date.strftime("%d-%m-%Y")
+            return { current_movie[0]: { 'imdb_id': imdb_id, 'directors': response_json['Director'], 'release_date': formatted_date } }
             
         
         except Exception as e:
             print(f"Error processing movie: {e}")
-        
-        return {current_movie[0]: {'release_date': None}}
             
     
     # Function that gathers the data of movies from the TMDB API and updates a json file with the data
@@ -144,16 +144,24 @@ class Extract():
         additional_tmdb_data = self.thread_pool(self.get_movie_data, {'max_range': TOTAL_PAGES, 'max_workers': 2 * MAX_WORKERS, 'type': 1, 'data': tmdb_data})
         tmdb_data = {key: {**tmdb_data[key], 'imdb_id': value['imdb_id'], 'rating': value['rating'] } for key, value in additional_tmdb_data.items()}
         
+        # Produce to Kafka
+        kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', tmdb_data)
+        
         # Write to json file (simulates sending to Producer) also updates self.new_movies dict
         self.update_json_file('tmdb_data.json', tmdb_data)
         
-        # RAPID API
+        # OMDB API
         if not len(self.new_movies):
             return
 
-        rapid_data = self.thread_pool(self.rapid_fetch_data, { 'max_range': math.ceil(len(self.new_movies) / MAX_WORKERS), 'max_workers': MAX_WORKERS, 'type': 1 })
+        # Gathers data from OMDB API
+        omdb_data = self.thread_pool(self.omdb_fetch_data, { 'max_range': math.ceil(len(self.new_movies) / MAX_WORKERS), 'max_workers': MAX_WORKERS, 'type': 1 })
         
-        self.update_json_file('rapid_data.json', rapid_data)
+        # Produce data to Kafka
+        kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
+        
+        # Writes to json file (simulates writing to Producer)        
+        self.update_json_file('omdb_data.json', omdb_data)
         
 
 # Run section
