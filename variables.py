@@ -3,7 +3,7 @@ from os import getenv
 from json import loads
 load_dotenv()
 
-PAGE_PER_SCAN = 5
+PAGE_PER_SCAN = 1
 MAX_WORKERS = 10
 MAX_PAGES = 200
 OMDB_API_KEY = getenv('OMDB_API_KEY')
