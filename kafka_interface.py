@@ -1,6 +1,9 @@
 import json
+
 from confluent_kafka import Producer, Consumer
+
 from variables import CLOUDKARAFKA_HOSTNAME, CLOUDKARAFKA_PASSWORD, CLOUDKARAFKA_USERNAME
+
 
 class KafkaInterface:
     def __init__(self):
@@ -12,9 +15,21 @@ class KafkaInterface:
         """
         
         # Kafka producer configuration
-        self.producer_config = {
+        self._producer_config = {
             'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
             'session.timeout.ms': 6000,
+            'security.protocol': 'SASL_SSL',
+            'sasl.mechanisms': 'SCRAM-SHA-256',
+            'sasl.username': CLOUDKARAFKA_USERNAME,
+            'sasl.password': CLOUDKARAFKA_PASSWORD
+        }
+        
+        # Kafka consumer configuration
+        self._consumer_config = {
+            'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
+            'group.id': 'nosaqtgg-omdb-api',
+            'session.timeout.ms': 6000,
+            'default.topic.config': {'auto.offset.reset': 'smallest'},
             'security.protocol': 'SASL_SSL',
             'sasl.mechanisms': 'SCRAM-SHA-256',
             'sasl.username': CLOUDKARAFKA_USERNAME,
@@ -31,40 +46,30 @@ class KafkaInterface:
 
         Messages are produced in JSON format.
         """
-        producer = Producer(self.producer_config)
+        producer = Producer(self._producer_config)
 
         try:
             # Produce JSON message to the specified topic
             for title, information in data.items():
                 producer.produce(topic, key=None, value=json.dumps({title: information}))
                 producer.flush()
-                print(f"Produced to {topic}: {title}: {information}")
+                # print(f"Produced to {topic}: {title}: {information}")
         except Exception as e:
             print(f"Error producing to {topic}: {e}")
+        print("finished producing")
 
-    def consume_from_topic(self, topic):
+    def consume_from_topic(self, topics, callback):
         """
         Consumes messages from a specified Kafka topic.
 
         Parameters:
-        - topic: The Kafka topic from which messages will be consumed.
+        - topics: The Kafka topics from which messages will be consumed.
 
         Consumed messages are printed in the console.
         """
-        # Kafka consumer configuration
-        self.consumer_config = {
-            'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
-            'group.id': topic,
-            'session.timeout.ms': 6000,
-            'default.topic.config': {'auto.offset.reset': 'smallest'},
-            'security.protocol': 'SASL_SSL',
-            'sasl.mechanisms': 'SCRAM-SHA-256',
-            'sasl.username': CLOUDKARAFKA_USERNAME,
-            'sasl.password': CLOUDKARAFKA_PASSWORD
-        }
-
-        consumer = Consumer(self.consumer_config)
-        consumer.subscribe([topic])
+        
+        consumer = Consumer(self._consumer_config)
+        consumer.subscribe(topics)
 
         try:
             while True:
@@ -78,7 +83,7 @@ class KafkaInterface:
 
                 # Process the consumed message
                 data = json.loads(msg.value())
-                print(f"Consumed from {topic}: {data}")
+                callback(msg.topic(), data)
         except KeyboardInterrupt:
             pass
 

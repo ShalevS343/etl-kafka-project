@@ -12,6 +12,7 @@ from tqdm import tqdm
 from kafka_interface import kafka_interface
 from variables import MAX_WORKERS, PAGE_PER_SCAN, TMDB_HEADERS, OMDB_API_KEY, MAX_PAGES
 
+
 class Extract():
     def __init__(self, interval=300):
         """
@@ -41,7 +42,7 @@ class Extract():
         try:
             while True:
                 # Background code to be executed
-                self.gather_movie_data()
+                self._gather_movie_data()
 
                 self._start_index += PAGE_PER_SCAN
                 
@@ -132,7 +133,7 @@ class Extract():
         Gets additional movie data from the TMDB API.
 
         Parameters:
-        - params: A dictionary containing parameters for the TMDB API request.
+        - params: A dictionary containing parameters from the Threading Pool.
 
         Returns:
         A dictionary containing additional movie data.
@@ -150,7 +151,7 @@ class Extract():
         Fetches base movie data from the TMDB API.
 
         Parameters:
-        - params: A dictionary containing parameters for the TMDB API request.
+        - params: A dictionary containing parameters from the Threading Pool.
 
         Returns:
         A dictionary containing base movie data.
@@ -175,7 +176,7 @@ class Extract():
         Fetches data from the OMDB API.
 
         Parameters:
-        - params: A dictionary containing parameters for the OMDB API request.
+        - params: A dictionary containing parameters from the Threading Pool.
 
         Returns:
         A dictionary containing data from the OMDB API.
@@ -197,7 +198,7 @@ class Extract():
         formatted_date = original_date.strftime("%d-%m-%Y") if original_date is not None else original_date
         return {current_movie[0]: {'imdb_id': imdb_id, 'directors': response_json['Director'] if 'Director' in response_json else None, 'release_date': formatted_date}}
 
-    def gather_movie_data(self):
+    def _gather_movie_data(self):
         """
         Gathers movie data from TMDB and OMDB APIs, updates JSON files, and simulates sending data to Kafka.
         """
@@ -206,7 +207,7 @@ class Extract():
         additional_tmdb_data = self._thread_pool(self._get_movie_data, {'max_range': PAGE_PER_SCAN, 'max_workers': 2 * MAX_WORKERS, 'type': 1, 'data': tmdb_data})
         tmdb_data = {key: {**tmdb_data[key], 'imdb_id': value['imdb_id'], 'rating': value['rating']} for key, value in additional_tmdb_data.items()}
         
-        # kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', tmdb_data)
+        kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', tmdb_data)
         self._update_json_file('tmdb_data.json', tmdb_data)
         
         # OMDB API
@@ -215,7 +216,7 @@ class Extract():
 
         omdb_data = self._thread_pool(self._omdb_fetch_data, {'max_range': math.ceil(len(self._new_movies) / MAX_WORKERS), 'max_workers': MAX_WORKERS, 'type': 1})
         
-        # kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
+        kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
         self._update_json_file('omdb_data.json', omdb_data)
 
 # Run section
