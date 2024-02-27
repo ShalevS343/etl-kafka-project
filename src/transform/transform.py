@@ -4,7 +4,7 @@ from pyspark.sql import SparkSession, Row
 from pyspark.sql.functions import lit
 from pyspark.sql.types import StructType, StructField, StringType, FloatType, ArrayType, DateType
 
-from kafka_interface import kafka_interface
+from src.interfaces.kafka_interface import kafka_interface
 
 
 class Transform:
