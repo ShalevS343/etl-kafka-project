@@ -2,7 +2,7 @@ import json
 
 from confluent_kafka import Producer, Consumer
 
-from variables import CLOUDKARAFKA_HOSTNAME, CLOUDKARAFKA_PASSWORD, CLOUDKARAFKA_USERNAME
+from utils.utils import CLOUDKARAFKA_HOSTNAME, CLOUDKARAFKA_PASSWORD, CLOUDKARAFKA_USERNAME
 
 
 class KafkaInterface:
