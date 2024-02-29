@@ -1,91 +1,46 @@
 import json
 
-from confluent_kafka import Producer, Consumer
+from confluent_kafka import Producer, Consumer, KafkaException
 
-from utils.utils import CLOUDKARAFKA_HOSTNAME, CLOUDKARAFKA_PASSWORD, CLOUDKARAFKA_USERNAME
-
+from src.config.config import Config
+from src.logging import logger
 
 class KafkaInterface:
-    def __init__(self):
-        """
-        Initializes the KafkaInterface class.
-
-        The class is responsible for handling messages sent between the Extract and Transform parts in the ETL process.
-        Messages are sent in real-time.
-        """
-        
-        # Kafka producer configuration
-        self._producer_config = {
-            'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
-            'session.timeout.ms': 6000,
-            'security.protocol': 'SASL_SSL',
-            'sasl.mechanisms': 'SCRAM-SHA-256',
-            'sasl.username': CLOUDKARAFKA_USERNAME,
-            'sasl.password': CLOUDKARAFKA_PASSWORD
-        }
-        
-        # Kafka consumer configuration
-        self._consumer_config = {
-            'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
-            'group.id': 'nosaqtgg-omdb-api',
-            'session.timeout.ms': 6000,
-            'default.topic.config': {'auto.offset.reset': 'smallest'},
-            'security.protocol': 'SASL_SSL',
-            'sasl.mechanisms': 'SCRAM-SHA-256',
-            'sasl.username': CLOUDKARAFKA_USERNAME,
-            'sasl.password': CLOUDKARAFKA_PASSWORD
-        }
+    def __init__(self):     
+        self._consumer = Consumer(Config.CONSUMER_CONFIG)
+        self._producer = Producer(Config.PRODUCER_CONFIG)
 
     def produce_to_topic(self, topic, data):
-        """
-        Produces messages to a specified Kafka topic.
-
-        Parameters:
-        - topic: The Kafka topic to which messages will be produced.
-        - data: A dictionary containing data to be sent as messages.
-
-        Messages are produced in JSON format.
-        """
-        producer = Producer(self._producer_config)
-
         try:
             # Produce JSON message to the specified topic
             for title, information in data.items():
-                producer.produce(topic, key=None, value=json.dumps({title: information}))
-                producer.flush()
-                # print(f"Produced to {topic}: {title}: {information}")
-        except Exception as e:
-            print(f"Error producing to {topic}: {e}")
-        print("finished producing")
+                self._producer.produce(topic, key=None, value=json.dumps({title: information}))
+                self._producer.flush()
+        except KafkaException as e:
+            logger.exception(f"Error producing to {topic}: {e}")
 
     def consume_from_topic(self, topics, callback):
-        """
-        Consumes messages from a specified Kafka topic.
-
-        Parameters:
-        - topics: The Kafka topics from which messages will be consumed.
-
-        Consumed messages are printed in the console.
-        """
-        
-        consumer = Consumer(self._consumer_config)
-        consumer.subscribe(topics)
+        self._consumer.subscribe(topics)
 
         try:
             while True:
-                msg = consumer.poll(1.0)
+                msg = self._consumer.poll(1.0)
 
                 if msg is None:
                     continue
                 if msg.error():
-                    print(f"Consumer error: {msg.error()}")
-                    continue
+                    raise KafkaException(msg.error())
 
                 # Process the consumed message
                 data = json.loads(msg.value())
                 callback(msg.topic(), data)
-        except KeyboardInterrupt:
-            pass
+                
+                self._consumer.commit()
+        except KafkaException as e:
+            logger.exception(f"Error consuming from {msg.topic()}: {e}")
+        finally:
+            self._consumer.close()
+
 
 # Singleton instance of KafkaInterface for easy access
 kafka_interface = KafkaInterface()
