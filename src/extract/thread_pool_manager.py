@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 class ThreadPoolManager:
     @staticmethod
-    def execute_threads(func, params):
+    def execute_threads(callback, params: dict):
         """
         Runs multiple threads using a thread pool.
 
@@ -18,13 +18,12 @@ class ThreadPoolManager:
         with ThreadPoolExecutor(params['max_workers']) as executor:
             data = {}
             total_iterations = params['max_range'] * params['type']
-            local_range = 0
+            params['range_index'] = 0
 
-            with tqdm(total=total_iterations, desc=f"Running {func.__name__}") as pbar_outer:
-                for range_index in range(params['start_index'], min(params['max_range'] + params['start_index'], params['max_pages']), min(params['max_range'] + 1 - local_range, params['type'] + local_range)):
-                    local_range = range_index
-                    params = {**params, 'range_index': range_index}
-                    workers = [executor.submit(func, {**params, 'worker_number': worker_number}) for worker_number in range(params['max_workers'])]
+            with tqdm(total=total_iterations, desc=f"Running {callback.__name__}") as pbar_outer:
+                for range_index in range(params['start_index'], min(params['max_range'] + params['start_index'], params['max_pages']), min(params['max_range'] + 1 - params['range_index'], params['type'] + params['range_index'])):
+                    params['range_index'] = range_index
+                    workers = [executor.submit(callback, {**params, 'worker_number': worker_number}) for worker_number in range(params['max_workers'])]
 
                     for worker in workers:
                         thread_data = worker.result()

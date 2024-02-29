@@ -1,20 +1,19 @@
 import json
-import multiprocessing
+import threading
 import os
 import time
 
-from src.extract.tmdb_data_fetcher import TMDBDataFetcher
+from src.config.config import Config
 from src.extract.omdb_data_fetcher import OMDBDataFetcher
-from utils.extract_utils.general import *
+from src.extract.thread_pool_manager import ThreadPoolManager
+from src.extract.tmdb_data_fetcher import TMDBDataFetcher
+from src.interfaces.kafka_interface import kafka_interface
+from src.logging import logger
 
-import sys
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(current_dir, '..'))
-# from src.interfaces.kafka_interface import kafka_interface
 
 
 class Extract():
-    def __init__(self, interval=300):
+    def __init__(self, conf=300):
         """
         Initializes the Extract class.
 
@@ -23,43 +22,55 @@ class Extract():
         """
         self._new_movies = {}
         self._start_index = 0
-        self._interval = interval
-        self._process = None
+        self._conf = conf
+        self._stop_event = threading.Event()
 
     def start(self):
         """
-        Starts the background extraction process.
+        Starts the background extraction process using a thread pool.
         """
-        self._process = multiprocessing.Process(target=self._run)
-        self._process.start()
+        params = {
+            'max_workers': 1,
+            'max_range': Config.PAGE_PER_SCAN,
+            'type': 1, 
+            'start_index': 0,
+            'max_pages': Config.MAX_PAGES
+        }
 
-    def _run(self):
+        self._stop_event.clear()
+        self._thread_pool = ThreadPoolManager.execute_threads(self._run, params)
+
+    def _run(self, params):
         """
         Runs the extraction process in the background.
 
-        The process reads PAGE_PER_SCAN pages every interval seconds and stops when reaching MAX_PAGES.
+        The process reads PAGE_PER_SCAN pages every set amount of seconds and stops when reaching MAX_PAGES.
         """
         try:
-            while True:
+            while not self._stop_event.is_set():
                 # Background code to be executed
                 self._gather_movie_data()
 
-                self._start_index += PAGE_PER_SCAN
-                
-                for waiting_time in range(self._interval):
+                params['start_index'] += Config.PAGE_PER_SCAN
+
+                for waiting_time in range(self._conf):
+                    logger.info("Next scan for pages %d-%d in %d seconds", 
+                                        params['start_index'], 
+                                        params['start_index'] + Config.PAGE_PER_SCAN, 
+                                        self._conf - waiting_time)
                     time.sleep(1)
-                    print(f"\rNext scan for pages {self._start_index}-{self._start_index + PAGE_PER_SCAN} in {self._interval - waiting_time} seconds", end='', flush=True)
-                self.stop()
         except KeyboardInterrupt:
             self.stop()
 
+
     def stop(self):
         """
-        Stops the background extraction process.
+        Stops the background extraction thread pool.
         """
-        if self._process is not None and self._process.is_alive():
-            self._process.terminate()
-            self._process.join()
+        self._stop_event.set()
+        # Wait for thread pool to complete
+        if hasattr(self, '_thread_pool'):
+            self._thread_pool.join()
 
     def _remove_duplicate_movies(self, existing_data, new_data):
         """
@@ -71,10 +82,7 @@ class Extract():
         """
         self._new_movies = {title: new_data[title] for title in new_data if title not in existing_data}
         self._new_movies = list(self._new_movies.items())
-        if len(self._new_movies) == 0:
-            print('No new titles') 
-        else:
-            print(f'{len(self._new_movies)} New titles added')
+        logger.info(f'{len(self._new_movies)} New titles added')
 
     def _update_json_file(self, file_name, new_data):
         """
@@ -103,7 +111,7 @@ class Extract():
 
     def _gather_movie_data(self):
         """
-        Gathers movie data from TMDB and OMDB APIs, updates JSON files, and simulates sending data to Kafka.
+        Gathers movie data from TMDB and OMDB APIs, updates JSON files, and send data to Kafka.
         """
         # TMDB API
         tmdb_data = TMDBDataFetcher.fetch(self._start_index)
@@ -113,6 +121,5 @@ class Extract():
         
         # # OMDB API
         omdb_data = OMDBDataFetcher.fetch(self._start_index, self._new_movies)
-        
         # kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
         self._update_json_file('omdb_data.json', omdb_data)

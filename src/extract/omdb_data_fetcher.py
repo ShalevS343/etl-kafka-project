@@ -3,8 +3,7 @@ import math
 import requests
 
 from src.extract.thread_pool_manager import ThreadPoolManager
-from utils.extract_utils.general import *
-from utils.extract_utils.omdb_utils import OMDB_API_KEY
+from src.config.config import Config
 
 
 class OMDBDataFetcher:
@@ -20,15 +19,15 @@ class OMDBDataFetcher:
         A dictionary containing all of the needed movie data from this API.
         """
         if not len(new_movies):
-            return
+            return {}
         
         params = {
-            'max_range': math.ceil(len(new_movies) / MAX_WORKERS),
-            'max_workers': MAX_WORKERS,
+            'max_range': math.ceil(len(new_movies) / Config.MAX_WORKERS),
+            'max_workers': Config.MAX_WORKERS,
             'type': 1,
             'new_movies': new_movies,
             'start_index': start_index,
-            'max_pages': MAX_PAGES}
+            'max_pages': Config.MAX_PAGES}
         omdb_data = ThreadPoolManager.execute_threads(OMDBDataFetcher._fetch_data, params)
         return omdb_data
     
@@ -55,7 +54,7 @@ class OMDBDataFetcher:
 
         url = 'http://www.omdbapi.com/'
 
-        response = requests.get(url, params={"apikey": OMDB_API_KEY, "i": imdb_id})
+        response = requests.get(url, params={"apikey": Config.OMDB_API_KEY, "i": imdb_id})
         response_json = response.json()
         original_date = datetime.strptime(response_json['Released'], "%d %b %Y") if 'Released' in response_json and response_json['Released'] != 'N/A' else None
         formatted_date = original_date.strftime("%d-%m-%Y") if original_date is not None else original_date
