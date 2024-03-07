@@ -2,8 +2,8 @@ import json
 
 from confluent_kafka import Producer, Consumer, KafkaException
 
-from src.config.config import Config
-from src.logging import logger
+from utils.config import Config
+from utils.logging import logger
 
 class KafkaInterface:
     def __init__(self):     

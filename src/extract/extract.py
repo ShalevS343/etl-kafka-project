@@ -3,15 +3,15 @@ import threading
 import os
 import time
 
-from src.config.config import Config
 from src.extract.omdb_data_fetcher import OMDBDataFetcher
 from src.extract.thread_pool_manager import ThreadPoolManager
 from src.extract.tmdb_data_fetcher import TMDBDataFetcher
-from src.interfaces.kafka_interface import kafka_interface
-from src.logging import logger
+from utils.config import Config
+from utils.interfaces.kafka_interface import kafka_interface
+from utils.logging import logger
 
 
-
+# TODO: add an abstract class for the data_fetcher
 class Extract():
     def __init__(self, conf=300):
         """
@@ -21,7 +21,6 @@ class Extract():
         - interval: The time interval (in seconds) for running the extraction process (default is 300 seconds).
         """
         self._new_movies = {}
-        self._start_index = 0
         self._conf = conf
         self._stop_event = threading.Event()
 
@@ -49,16 +48,17 @@ class Extract():
         try:
             while not self._stop_event.is_set():
                 # Background code to be executed
-                self._gather_movie_data()
+                self._gather_movie_data(params)
 
                 params['start_index'] += Config.PAGE_PER_SCAN
-
                 for waiting_time in range(self._conf):
                     logger.info("Next scan for pages %d-%d in %d seconds", 
                                         params['start_index'], 
                                         params['start_index'] + Config.PAGE_PER_SCAN, 
                                         self._conf - waiting_time)
                     time.sleep(1)
+                # self.stop()
+            
         except KeyboardInterrupt:
             self.stop()
 
@@ -109,17 +109,16 @@ class Extract():
             json.dump(existing_data, json_file, indent=2)
 
 
-    def _gather_movie_data(self):
+    def _gather_movie_data(self, params):
         """
         Gathers movie data from TMDB and OMDB APIs, updates JSON files, and send data to Kafka.
         """
         # TMDB API
-        tmdb_data = TMDBDataFetcher.fetch(self._start_index)
-        
-        # kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', tmdb_data)
+        tmdb_data = TMDBDataFetcher.fetch(params['start_index'])
+        kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', tmdb_data)
         self._update_json_file('tmdb_data.json', tmdb_data)
         
-        # # OMDB API
-        omdb_data = OMDBDataFetcher.fetch(self._start_index, self._new_movies)
-        # kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
+        # OMDB API
+        omdb_data = OMDBDataFetcher.fetch(params['start_index'], self._new_movies)
+        kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
         self._update_json_file('omdb_data.json', omdb_data)
