@@ -1,6 +1,6 @@
 import requests
 from src.extract.thread_pool_manager import ThreadPoolManager
-from src.config.config import Config
+from utils.config import Config
 
 class TMDBDataFetcher:
     
