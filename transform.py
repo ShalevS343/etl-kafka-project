@@ -1,1 +1,0 @@
-from kafka_interface import kafka_interface

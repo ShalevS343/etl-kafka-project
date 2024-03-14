@@ -1,6 +1,7 @@
 import redis
 import json
 
+# Base class for now will work on redis soon
 class RedisInterface:
     def __init__(self, host='localhost', port=6379, db=0, password=None):
         """
