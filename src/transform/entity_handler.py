@@ -1,10 +1,12 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, FloatType, ArrayType, DateType
 
 class EntityHandler(ABC):
     """
     Abstract base class for handling entities.
+
+    This class provides functionality to initialize SparkSession and DataFrame schema.
     """
 
     def __init__(self, spark_master="local[*]"):
@@ -31,16 +33,3 @@ class EntityHandler(ABC):
 
         # Create an empty DataFrame
         self._df = self._spark.createDataFrame([], schema=self._movie_schema)
-
-    @abstractmethod
-    def _format_data(self, params):
-        """
-        Formats raw data received from Kafka messages based on the topic.
-
-        Parameters:
-        - params (dict): Parameters for given from transform.py
-
-        Returns:
-        - dict: Formatted data with standardized keys.
-        """
-        pass

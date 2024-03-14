@@ -2,18 +2,20 @@ from datetime import datetime
 import math
 import requests
 
+from src.extract.data_fetcher import DataFetcher
 from src.extract.thread_pool_manager import ThreadPoolManager
 from utils.config import Config
 
 
-class OMDBDataFetcher:
+class OMDBDataFetcher(DataFetcher):
     @staticmethod
     def fetch(start_index, new_movies):
         """
         Runs all of the functions in the class to get all of the data needed from the OMDB API.
 
         Parameters:
-        - params: Start index for the current run.
+        - start_index: Start index for the current run.
+        - new_movies: New movies added to the program
 
         Returns:
         A dictionary containing all of the needed movie data from this API.

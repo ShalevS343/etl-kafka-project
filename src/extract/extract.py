@@ -57,7 +57,7 @@ class Extract():
                                         params['start_index'] + Config.PAGE_PER_SCAN, 
                                         self._conf - waiting_time)
                     time.sleep(1)
-                # self.stop()
+                self.stop()
             
         except KeyboardInterrupt:
             self.stop()

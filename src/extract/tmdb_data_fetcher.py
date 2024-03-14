@@ -1,8 +1,10 @@
 import requests
 from src.extract.thread_pool_manager import ThreadPoolManager
 from utils.config import Config
+from src.extract.data_fetcher import DataFetcher
 
-class TMDBDataFetcher:
+
+class TMDBDataFetcher(DataFetcher):
     
     @staticmethod
     def fetch(start_index):
@@ -10,7 +12,7 @@ class TMDBDataFetcher:
         Runs all of the functions in the class to get all of the data needed from the TMDB API.
 
         Parameters:
-        - params: Start index for the current run.
+        - start_index: Start index for the current run.
 
         Returns:
         A dictionary containing all of the needed movie data from this API.
@@ -51,7 +53,8 @@ class TMDBDataFetcher:
                                 params={
                                     "page": page, 
                                     "with_original_language": "en", 
-                                    "region": "US"
+                                    "region": "US",
+                                    "primary_release_date.lte": "2006-12-31",
                                 })
         data = response.json()
         return {movie['title']: {'id': movie['id'], 'page': page} for movie in data.get('results', [])}
