@@ -38,6 +38,13 @@ class Config:
 
     @classmethod
     def validate_config(cls):
+        """
+        Validates the configuration parameters.
+
+        This method validates various configuration parameters such as page per scan, maximum workers,
+        maximum pages, OMDB API key, TMDB headers, and Kafka configurations.
+        """
+        
         cls._validate_page_per_scan()
         cls._validate_max_workers()
         cls._validate_max_pages()

@@ -8,7 +8,7 @@ class ThreadPoolManager:
         Runs multiple threads using a thread pool.
 
         Parameters:
-        - func: The function to be executed by each thread.
+        - callback: The function to be executed by each thread.
         - params: A dictionary containing parameters for the function and thread pool.
 
         Returns:

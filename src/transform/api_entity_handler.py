@@ -1,86 +1,40 @@
-from datetime import datetime
-from pyspark.sql import Row
-from pyspark.sql.functions import lit
 from utils.interfaces.kafka_interface import kafka_interface
-from src.transform.entity_handler import EntityHandler
+from src.transform.omdb_entity_handler import OmdbEntityHandler
+from src.transform.tmdb_entity_handler import TmdbEntityHandler
 
-class ApiEntityHandler(EntityHandler):
+class ApiEntityHandler():
+    def __init__(self):
+        """
+        Initializes an instance of ApiEntityHandler.
 
+        This class is responsible for handling data received from Kafka topics
+        and sending it to the appropriate handler based on the topic.
+
+        """
+        self._tmdb_handler = TmdbEntityHandler()
+        self._omdb_handler = OmdbEntityHandler()
+        
+    
     def start_processing(self, kafka_topics):
         """
         Starts consuming data from Kafka topics and processes each message.
-        """
-        kafka_interface.consume_from_topic(kafka_topics, self.process_message)
 
-    def _format_data(self, topic, data):
+        Parameters:
+        - kafka_topics (list): List of Kafka topics to consume data from.
         """
-        Implementation of the abstract _format_data method.
+        kafka_interface.consume_from_topic(kafka_topics, self.send_to_handler)
+
+    def send_to_handler(self, topic, data):
+        """
+        Sends the data to the appropriate handler based on the Kafka topic.
 
         Parameters:
         - topic (str): Kafka topic from which the data is received.
         - data (dict): Raw data received from Kafka message.
-
-        Returns:
-        - dict: Formatted data with standardized keys.
         """
-        formatted_data = {
-            'imdb_id': None,
-            'movie_name': None,
-            'genres': None,
-            'directors': None,
-            'lead_actors': None,
-            'rating': None,
-            'awards': None,
-            'release_date': datetime.strptime('01-01-0001', "%d-%m-%Y"),
-        }
-
         if topic == 'nosaqtgg-tmdb-api':
-            data_values = list(data.values())[0]
-            formatted_data = {**formatted_data, 'imdb_id': data_values['imdb_id'],
-                              'movie_name': list(data.keys())[0], 'rating': data_values['rating']}
+            self._tmdb_handler.process_message(data=data)
+        elif topic == 'nosaqtgg-omdb-api':
+            self._omdb_handler.process_message(data=data)
         else:
-            data = list(data.values())[0]
-            formatted_data['imdb_id'] = data['imdb_id']
-            try:
-                formatted_data['release_date'] = datetime.strptime(data['release_date'], "%d-%m-%Y")
-            except ValueError:
-                pass
-            except TypeError:
-                pass
-            if data['directors']:
-                formatted_data['directors'] = [data['directors']] if ',' not in data['directors'] else data['directors'].split(', ')
-        return formatted_data
-
-    def process_message(self, topic, data):
-        """
-        Processes each Kafka message by formatting the data and updating the DataFrame.
-
-        Parameters:
-        - topic (str): Kafka topic from which the data is received.
-        - data (dict): Raw data received from Kafka message.
-        """
-        # Format the raw data using ApiEntityHandler's _format_data method
-        data = self._format_data(topic, data)
-
-        # Convert imdb_id to string for matching with DataFrame
-        imdb_id = str(data['imdb_id'])
-
-        # Filter existing rows with the same imdb_id
-        existing_row = self._df.filter(f"imdb_id = '{imdb_id}'")
-        if existing_row.count() > 0:
-            # Simplify the update using Spark SQL
-            for key, value in data.items():
-                if value is not None:
-                    self._df = self._df.withColumn(key, lit(value))
-
-            # Remove existing rows with the same imdb_id using Spark SQL
-            self._df = self._df.filter(f"imdb_id != '{imdb_id}'")
-
-            # Union the updated row(s) with the existing DataFrame
-            self._df = self._df.union(existing_row)
-        else:
-            # Simplify the creation of a new Row
-            new_row = Row(**data)
-
-            # Union with the existing DataFrame
-            self._df = self._df.unionByName(self._spark.createDataFrame([new_row], schema=self._df.schema))
+            raise ValueError('No topic given in the message!')
