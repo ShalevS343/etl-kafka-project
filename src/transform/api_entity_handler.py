@@ -1,6 +1,13 @@
 from utils.interfaces.kafka_interface import kafka_interface
 from src.transform.omdb_entity_handler import OmdbEntityHandler
 from src.transform.tmdb_entity_handler import TmdbEntityHandler
+from src.transform.entity_handler import entity_handler
+from src.transform.genre_handler import genre_handler
+from src.transform.actor_handler import actor_handler
+
+
+
+
 
 class ApiEntityHandler():
     def __init__(self):
@@ -32,9 +39,24 @@ class ApiEntityHandler():
         - topic (str): Kafka topic from which the data is received.
         - data (dict): Raw data received from Kafka message.
         """
-        if topic == 'nosaqtgg-tmdb-api':
-            self._tmdb_handler.process_message(data=data)
-        elif topic == 'nosaqtgg-omdb-api':
-            self._omdb_handler.process_message(data=data)
+        if topic is not None:
+            self._process_message(topic, data)
         else:
-            raise ValueError('No topic given in the message!')
+            raise ValueError('No topic was given in the message!')
+        
+    def _process_message(self, topic, data):
+        """
+        Processes each Kafka message by formatting the data and updating the DataFrame.
+
+        Parameters:
+        - data (dict): Raw data received from Kafka message.
+        """
+        if topic == 'nosaqtgg-tmdb-api':
+            data = self._tmdb_handler.format_data(data)
+        else:
+            data = self._omdb_handler.format_data(data)
+        imdb_id = str(data.get('imdb_id'))
+        data['genres'] = genre_handler.get_genre(imdb_id)
+        data['lead_actors'] = actor_handler.get_actor(imdb_id)
+        
+        entity_handler.edit_row(imdb_id, data)

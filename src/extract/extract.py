@@ -11,7 +11,6 @@ from utils.interfaces.kafka_interface import kafka_interface
 from utils.logging import logger
 
 
-# TODO: add an abstract class for the data_fetcher
 class Extract():
     def __init__(self, conf=300):
         """
