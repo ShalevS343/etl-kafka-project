@@ -5,10 +5,6 @@ from src.transform.entity_handler import entity_handler
 from src.transform.genre_handler import genre_handler
 from src.transform.actor_handler import actor_handler
 
-
-
-
-
 class ApiEntityHandler():
     def __init__(self):
         """
