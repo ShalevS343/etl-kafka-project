@@ -1,111 +1,9 @@
 {
-  "Pirates of the Caribbean: The Curse of the Black Pearl": {
-    "id": 22,
+  "The Passion of the Christ": {
+    "id": 615,
     "page": 1,
-    "imdb_id": "tt0325980",
-    "rating": 7.799
-  },
-  "Harry Potter and the Philosopher's Stone": {
-    "id": 671,
-    "page": 1,
-    "imdb_id": "tt0241527",
-    "rating": 7.915
-  },
-  "The Shawshank Redemption": {
-    "id": 278,
-    "page": 1,
-    "imdb_id": "tt0111161",
-    "rating": 8.704
-  },
-  "The Lord of the Rings: The Fellowship of the Ring": {
-    "id": 120,
-    "page": 1,
-    "imdb_id": "tt0120737",
-    "rating": 8.41
-  },
-  "Monsters, Inc.": {
-    "id": 585,
-    "page": 1,
-    "imdb_id": "tt0198781",
-    "rating": 7.843
-  },
-  "Dune": {
-    "id": 841,
-    "page": 1,
-    "imdb_id": "tt0087182",
-    "rating": 6.2
-  },
-  "The Lord of the Rings: The Return of the King": {
-    "id": 122,
-    "page": 1,
-    "imdb_id": "tt0167260",
-    "rating": 8.478
-  },
-  "Harry Potter and the Prisoner of Azkaban": {
-    "id": 673,
-    "page": 1,
-    "imdb_id": "tt0304141",
-    "rating": 8.016
-  },
-  "Charlie and the Chocolate Factory": {
-    "id": 118,
-    "page": 1,
-    "imdb_id": "tt0367594",
-    "rating": 7.051
-  },
-  "Titanic": {
-    "id": 597,
-    "page": 1,
-    "imdb_id": "tt0120338",
-    "rating": 7.904
-  },
-  "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe": {
-    "id": 411,
-    "page": 1,
-    "imdb_id": "tt0363771",
-    "rating": 7.132
-  },
-  "The Godfather": {
-    "id": 238,
-    "page": 1,
-    "imdb_id": "tt0068646",
-    "rating": 8.695
-  },
-  "Shrek 2": {
-    "id": 809,
-    "page": 1,
-    "imdb_id": "tt0298148",
-    "rating": 7.263
-  },
-  "Forrest Gump": {
-    "id": 13,
-    "page": 1,
-    "imdb_id": "tt0109830",
-    "rating": 8.476
-  },
-  "Shrek": {
-    "id": 808,
-    "page": 1,
-    "imdb_id": "tt0126029",
-    "rating": 7.738
-  },
-  "Star Wars": {
-    "id": 11,
-    "page": 1,
-    "imdb_id": "tt0076759",
-    "rating": 8.204
-  },
-  "Harry Potter and the Goblet of Fire": {
-    "id": 674,
-    "page": 1,
-    "imdb_id": "tt0330373",
-    "rating": 7.813
-  },
-  "Pirates of the Caribbean: Dead Man's Chest": {
-    "id": 58,
-    "page": 1,
-    "imdb_id": "tt0383574",
-    "rating": 7.354
+    "imdb_id": "tt0335345",
+    "rating": 7.474
   },
   "Harry Potter and the Chamber of Secrets": {
     "id": 672,
@@ -113,10 +11,112 @@
     "imdb_id": "tt0295297",
     "rating": 7.72
   },
-  "Mean Girls": {
-    "id": 10625,
+  "Pirates of the Caribbean: The Curse of the Black Pearl": {
+    "id": 22,
     "page": 1,
-    "imdb_id": "tt0377092",
-    "rating": 7.207
+    "imdb_id": "tt0325980",
+    "rating": 7.799
+  },
+  "Beetlejuice": {
+    "id": 4011,
+    "page": 1,
+    "imdb_id": "tt0094721",
+    "rating": 7.38
+  },
+  "Harry Potter and the Philosopher's Stone": {
+    "id": 671,
+    "page": 1,
+    "imdb_id": "tt0241527",
+    "rating": 7.914
+  },
+  "The Lord of the Rings: The Fellowship of the Ring": {
+    "id": 120,
+    "page": 1,
+    "imdb_id": "tt0120737",
+    "rating": 8.411
+  },
+  "The Ten Commandments": {
+    "id": 6844,
+    "page": 1,
+    "imdb_id": "tt0049833",
+    "rating": 7.757
+  },
+  "Harry Potter and the Prisoner of Azkaban": {
+    "id": 673,
+    "page": 1,
+    "imdb_id": "tt0304141",
+    "rating": 8.016
+  },
+  "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe": {
+    "id": 411,
+    "page": 1,
+    "imdb_id": "tt0363771",
+    "rating": 7.1
+  },
+  "Shrek": {
+    "id": 808,
+    "page": 1,
+    "imdb_id": "tt0126029",
+    "rating": 7.738
+  },
+  "Dune": {
+    "id": 841,
+    "page": 1,
+    "imdb_id": "tt0087182",
+    "rating": 6.2
+  },
+  "Harry Potter and the Goblet of Fire": {
+    "id": 674,
+    "page": 1,
+    "imdb_id": "tt0330373",
+    "rating": 7.813
+  },
+  "Titanic": {
+    "id": 597,
+    "page": 1,
+    "imdb_id": "tt0120338",
+    "rating": 7.9
+  },
+  "Monsters, Inc.": {
+    "id": 585,
+    "page": 1,
+    "imdb_id": "tt0198781",
+    "rating": 7.8
+  },
+  "The Shawshank Redemption": {
+    "id": 278,
+    "page": 1,
+    "imdb_id": "tt0111161",
+    "rating": 8.705
+  },
+  "The Lion King": {
+    "id": 8587,
+    "page": 1,
+    "imdb_id": "tt0110357",
+    "rating": 8.3
+  },
+  "The Lord of the Rings: The Return of the King": {
+    "id": 122,
+    "page": 1,
+    "imdb_id": "tt0167260",
+    "rating": 8.479
+  },
+  "Toy Story": {
+    "id": 862,
+    "page": 1,
+    "imdb_id": "tt0114709",
+    "rating": 8.0
+  },
+  "Shrek 2": {
+    "id": 809,
+    "page": 1,
+    "imdb_id": "tt0298148",
+    "rating": 7.265
+  },
+  "Alien": {
+    "id": 348,
+    "page": 1,
+    "imdb_id": "tt0078748",
+    "rating": 8.15
   }
 }

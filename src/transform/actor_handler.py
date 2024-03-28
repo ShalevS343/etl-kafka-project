@@ -24,6 +24,8 @@ class ActorHandler():
         - actor (str): The actor of the movie.
         """
         actors = self._df.filter(self._df['FilmID'] == imdb_id).select('Actor').collect()
+        if not len(actors):
+            return None
         return [row['Actor'] for row in actors]
 
         

@@ -22,7 +22,7 @@ class EntityHandler():
             StructField("genres", ArrayType(StringType()), True),
             StructField("directors", ArrayType(StringType()), True),
             StructField("lead_actors", ArrayType(StringType()), True),
-            StructField("rating", FloatType(), True),
+            StructField("rating", StringType(), True),
             StructField("awards", ArrayType(StringType()), True),
             StructField("release_date", DateType(), True)
         ])

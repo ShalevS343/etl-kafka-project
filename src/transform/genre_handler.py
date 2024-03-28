@@ -21,10 +21,10 @@ class GenreHandler():
         - imdb_id (str): The IMDB ID of the movie.
 
         Returns:
-        - genre (str): The genre of the movie.
+        - genre (array): The genre of the movie.
         """
         genres = self._df.filter(self._df['imdb_id'] == imdb_id).select('genre').collect()
-        if genres is None:
+        if not len(genres):
             return None
         return genres[0]['genre'].split(', ')
 

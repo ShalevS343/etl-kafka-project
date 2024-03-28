@@ -4,6 +4,9 @@ from src.transform.tmdb_entity_handler import TmdbEntityHandler
 from src.transform.entity_handler import entity_handler
 from src.transform.genre_handler import genre_handler
 from src.transform.actor_handler import actor_handler
+from src.transform.bafta_handler import bafta_handler
+from src.transform.oscar_handler import oscar_handler
+
 
 class ApiEntityHandler():
     def __init__(self):
@@ -49,6 +52,8 @@ class ApiEntityHandler():
         """
         if topic == 'nosaqtgg-tmdb-api':
             data = self._tmdb_handler.format_data(data)
+            data['awards'] = self._gather_awards(data.get('movie_name'))
+            
         else:
             data = self._omdb_handler.format_data(data)
         imdb_id = str(data.get('imdb_id'))
@@ -56,3 +61,15 @@ class ApiEntityHandler():
         data['lead_actors'] = actor_handler.get_actor(imdb_id)
         
         entity_handler.edit_row(imdb_id, data)
+        
+        # TODO: Send data to Redis database
+    
+    def _gather_awards(self, film):
+        awards = None
+        oscar_awards = oscar_handler.get_awards(film) or []
+        bafta_awards = bafta_handler.get_awards(film) or []
+        
+        if len(oscar_awards) or len(bafta_awards):
+            awards = oscar_awards
+            awards.extend(bafta_awards)
+        return awards
