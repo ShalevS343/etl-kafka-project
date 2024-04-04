@@ -36,6 +36,8 @@ class Config:
         'sasl.password': CLOUDKARAFKA_PASSWORD
     }
 
+    REDIS_URI = getenv('REDIS_URI')
+    
     @classmethod
     def validate_config(cls):
         """
@@ -49,6 +51,7 @@ class Config:
         cls._validate_max_workers()
         cls._validate_max_pages()
         cls._validate_omdb_api_key()
+        cls._validate_redis_uri()
         cls._validate_tmdb_headers()
         cls._validate_cloudkafka_config()
 
@@ -71,6 +74,11 @@ class Config:
     def _validate_omdb_api_key(cls):
         if not cls.OMDB_API_KEY:
             raise ValueError("OMDB_API_KEY must be provided.")
+    
+    @classmethod
+    def _validate_redis_uri(cls):
+        if not cls.REDIS_URI:
+            raise ValueError("REDIS_URI must be provided.")
 
     @classmethod
     def _validate_tmdb_headers(cls):

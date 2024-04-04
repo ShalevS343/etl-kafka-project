@@ -1,25 +1,12 @@
 import redis
 import json
 
+from utils.config import Config
+
 # Base class for now will work on redis soon
 class RedisInterface:
-    def __init__(self, host='localhost', port=6379, db=0, password=None):
-        """
-        Initializes the RedisInterface.
-
-        Parameters:
-        - host: Redis server hostname (default is 'localhost').
-        - port: Redis server port (default is 6379).
-        - db: Redis database index (default is 0).
-        - password: Redis server password (default is None).
-        """
-        self._redis = redis.StrictRedis(
-            host=host,
-            port=port,
-            db=db,
-            password=password,
-            decode_responses=True
-        )
+    def __init__(self):
+        self._redis = redis.from_url(Config.REDIS_URI)
 
     def set_value(self, key, value):
         """
@@ -76,3 +63,5 @@ class RedisInterface:
         - amount: The amount by which to increment the counter (default is 1).
         """
         self._redis.incr(key, amount)
+
+redis_interface = RedisInterface()

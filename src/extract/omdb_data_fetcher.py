@@ -5,6 +5,7 @@ import requests
 from src.extract.data_fetcher import DataFetcher
 from src.extract.thread_pool_manager import ThreadPoolManager
 from utils.config import Config
+from utils.interfaces.redis_interface import redis_interface
 
 
 class OMDBDataFetcher(DataFetcher):
@@ -20,6 +21,7 @@ class OMDBDataFetcher(DataFetcher):
         Returns:
         A dictionary containing all of the needed movie data from this API.
         """
+        
         if not len(new_movies):
             return {}
         
@@ -49,8 +51,9 @@ class OMDBDataFetcher(DataFetcher):
         if index >= len(params['new_movies']):
             return {}
 
-        current_movie = params['new_movies'][index]
+        current_movie = list(params['new_movies'].items())[index]
         imdb_id = current_movie[1].get('imdb_id')
+        
         if not imdb_id:
             return {current_movie[0]: {'release_date': None, 'directors': None}}
 

@@ -8,6 +8,8 @@ from src.transform.bafta_handler import bafta_handler
 from src.transform.oscar_handler import oscar_handler
 
 
+
+
 class ApiEntityHandler():
     def __init__(self):
         """
@@ -60,7 +62,7 @@ class ApiEntityHandler():
         data['genres'] = genre_handler.get_genre(imdb_id)
         data['lead_actors'] = actor_handler.get_actor(imdb_id)
         
-        entity_handler.edit_row(imdb_id, data)
+        entity_handler.edit_row(imdb_id, data)        
         
         # TODO: Send data to Redis database
     

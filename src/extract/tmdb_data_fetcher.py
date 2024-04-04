@@ -1,6 +1,7 @@
 import requests
 from src.extract.thread_pool_manager import ThreadPoolManager
 from utils.config import Config
+from utils.interfaces.redis_interface import redis_interface
 from src.extract.data_fetcher import DataFetcher
 
 
@@ -74,7 +75,12 @@ class TMDBDataFetcher(DataFetcher):
         index = (params['range_index'] - params['start_index']) * 20 + params['worker_number']
         if index >= len(params['data']):
             return {}
+        
+        
+        
         result = list(params['data'].items())[index]
         url = f"https://api.themoviedb.org/3/movie/{result[1]['id']}?language=en-US"
         response = requests.get(url, headers=Config.TMDB_HEADERS).json()
+        if redis_interface.get_value(response['imdb_id']):
+            return {}
         return {result[0]: {'imdb_id': response['imdb_id'], 'rating': response['vote_average']}}

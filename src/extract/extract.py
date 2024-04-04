@@ -1,10 +1,6 @@
-import json
-import threading
-import os
 import time
 
 from src.extract.omdb_data_fetcher import OMDBDataFetcher
-from src.extract.thread_pool_manager import ThreadPoolManager
 from src.extract.tmdb_data_fetcher import TMDBDataFetcher
 from utils.config import Config
 from utils.interfaces.kafka_interface import kafka_interface
@@ -21,7 +17,6 @@ class Extract():
         """
         self._new_movies = {}
         self._conf = conf
-        self._stop_event = threading.Event()
 
     def start(self):
         """
@@ -35,17 +30,8 @@ class Extract():
             'max_pages': Config.MAX_PAGES
         }
 
-        self._stop_event.clear()
-        self._thread_pool = ThreadPoolManager.execute_threads(self._run, params)
-
-    def _run(self, params):
-        """
-        Runs the extraction process in the background.
-
-        The process reads PAGE_PER_SCAN pages every set amount of seconds and stops when reaching MAX_PAGES.
-        """
         try:
-            while not self._stop_event.is_set():
+            while True:
                 # Background code to be executed
                 self._gather_movie_data(params)
 
@@ -56,57 +42,9 @@ class Extract():
                                         params['start_index'] + Config.PAGE_PER_SCAN, 
                                         self._conf - waiting_time)
                     time.sleep(1)
-                self.stop()
-            
-        except KeyboardInterrupt:
-            self.stop()
 
-
-    def stop(self):
-        """
-        Stops the background extraction thread pool.
-        """
-        self._stop_event.set()
-        # Wait for thread pool to complete
-        if hasattr(self, '_thread_pool'):
-            self._thread_pool.join()
-
-    def _remove_duplicate_movies(self, existing_data, new_data):
-        """
-        Removes duplicate movies from the new data.
-
-        Parameters:
-        - existing_data: The existing data to compare against.
-        - new_data: The new data containing movies to check for duplicates.
-        """
-        self._new_movies = {title: new_data[title] for title in new_data if title not in existing_data}
-        self._new_movies = list(self._new_movies.items())
-        logger.info(f'{len(self._new_movies)} New titles added')
-
-    def _update_json_file(self, file_name, new_data):
-        """
-        Updates a JSON file with new data.
-
-        Parameters:
-        - file_name: The name of the JSON file to update.
-        - new_data: The new data to add to the JSON file.
-        """
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(script_dir, file_name)
-
-        try:
-            with open(file_path, 'r') as json_file:
-                existing_data = json.load(json_file)
-        except FileNotFoundError:
-            existing_data = {}
-        
-        if file_name == 'tmdb_data.json':
-            self._remove_duplicate_movies(existing_data, new_data)
-        existing_data.update(new_data)
-                        
-        with open(file_path, 'w') as json_file:
-            json.dump(existing_data, json_file, indent=2)
-
+        except Exception as e:
+            logger.error(e)
 
     def _gather_movie_data(self, params):
         """
@@ -114,10 +52,16 @@ class Extract():
         """
         # TMDB API
         tmdb_data = TMDBDataFetcher.fetch(params['start_index'])
-        kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', tmdb_data)
-        self._update_json_file('tmdb_data.json', tmdb_data)
         
         # OMDB API
-        omdb_data = OMDBDataFetcher.fetch(params['start_index'], self._new_movies)
-        kafka_interface.produce_to_topic('nosaqtgg-omdb-api', omdb_data)
-        self._update_json_file('omdb_data.json', omdb_data)
+        omdb_data = OMDBDataFetcher.fetch(params['start_index'], tmdb_data)
+        
+        self._produce(tmdb_data, omdb_data)
+        
+    def _produce(self, tmdb_data, omdb_data):
+        # Zip the two dictionaries together
+        zipped_data = zip(tmdb_data.items(), omdb_data.items())
+
+        for (tmdb_key, tmdb_value), (omdb_key, omdb_value) in zipped_data:
+            kafka_interface.produce_to_topic('nosaqtgg-tmdb-api', {tmdb_key: tmdb_value})
+            kafka_interface.produce_to_topic('nosaqtgg-omdb-api', {omdb_key: omdb_value})
