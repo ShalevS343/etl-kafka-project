@@ -1,5 +1,3 @@
-from datetime import datetime
-
 class OmdbEntityHandler():
 
     @staticmethod
@@ -29,7 +27,7 @@ class OmdbEntityHandler():
             raise ValueError("Data values is None")
         formatted_data['imdb_id'] = data_values.get('imdb_id')
         try:
-            formatted_data['release_date'] = datetime.strptime(data_values.get('release_date'), "%d-%m-%Y").date()
+            formatted_data['release_date'] = data_values.get('release_date')
         except ValueError:
             pass
         except TypeError:

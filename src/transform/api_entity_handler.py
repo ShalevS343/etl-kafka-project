@@ -7,9 +7,6 @@ from src.transform.actor_handler import actor_handler
 from src.transform.bafta_handler import bafta_handler
 from src.transform.oscar_handler import oscar_handler
 
-
-
-
 class ApiEntityHandler():
     def __init__(self):
         """
@@ -63,9 +60,7 @@ class ApiEntityHandler():
         data['lead_actors'] = actor_handler.get_actor(imdb_id)
         
         entity_handler.edit_row(imdb_id, data)        
-        
-        # TODO: Send data to Redis database
-    
+            
     def _gather_awards(self, film):
         awards = None
         oscar_awards = oscar_handler.get_awards(film) or []

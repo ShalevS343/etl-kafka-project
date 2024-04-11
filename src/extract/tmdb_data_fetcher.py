@@ -81,6 +81,6 @@ class TMDBDataFetcher(DataFetcher):
         result = list(params['data'].items())[index]
         url = f"https://api.themoviedb.org/3/movie/{result[1]['id']}?language=en-US"
         response = requests.get(url, headers=Config.TMDB_HEADERS).json()
-        if redis_interface.get_value(response['imdb_id']):
+        if redis_interface.get_by_id(response['imdb_id'])[0] != 0:
             return {}
-        return {result[0]: {'imdb_id': response['imdb_id'], 'rating': response['vote_average']}}
+        return {result[0]: {'imdb_id': response['imdb_id'], 'rating': response['vote_average'][0]}}

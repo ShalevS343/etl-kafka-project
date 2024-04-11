@@ -62,5 +62,6 @@ class OMDBDataFetcher(DataFetcher):
         response = requests.get(url, params={"apikey": Config.OMDB_API_KEY, "i": imdb_id})
         response_json = response.json()
         original_date = datetime.strptime(response_json['Released'], "%d %b %Y") if 'Released' in response_json and response_json['Released'] != 'N/A' else None
-        formatted_date = original_date.strftime("%d-%m-%Y") if original_date is not None else original_date
-        return {current_movie[0]: {'imdb_id': imdb_id, 'directors': response_json['Director'] if 'Director' in response_json else None, 'release_date': formatted_date}}
+        formatted_date = original_date.strftime("%Y-%m-%d") if original_date is not None else None
+        year = formatted_date.split('-')[0] if formatted_date is not None else None
+        return {current_movie[0]: {'imdb_id': imdb_id, 'directors': response_json['Director'] if 'Director' in response_json else None, 'release_date': year}}

@@ -4,7 +4,6 @@ from pyspark.sql import Row
 from pyspark.sql.functions import lit, when, col
 from src.load.load import loader
 
-
 class EntityHandler():
 
     def __init__(self, spark_master="local[*]"):
@@ -28,7 +27,7 @@ class EntityHandler():
             StructField("lead_actors", ArrayType(StringType()), True),
             StructField("rating", StringType(), True),
             StructField("awards", ArrayType(StringType()), True),
-            StructField("release_date", DateType(), True),
+            StructField("release_date", StringType(), True),
             StructField("tc", IntegerType(), True)
         ])
 
@@ -60,9 +59,9 @@ class EntityHandler():
         if not filtered_df.isEmpty():
             row = filtered_df.first()
             json_row = row.asDict()
-            json_row['release_date'] = json_row['release_date'].isoformat() if json_row['release_date'] is not None else None
+            print(json_row)
+            json_row.pop('tc')
             loader.load(json_row)
-            
             self._df = self._df.filter(f"imdb_id != '{imdb_id}'")
         
         self._df.show()

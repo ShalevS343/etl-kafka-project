@@ -6,7 +6,6 @@ from utils.config import Config
 from utils.interfaces.kafka_interface import kafka_interface
 from utils.logging import logger
 
-
 class Extract():
     def __init__(self, conf=300):
         """
@@ -42,7 +41,7 @@ class Extract():
                                         params['start_index'] + Config.PAGE_PER_SCAN, 
                                         self._conf - waiting_time)
                     time.sleep(1)
-
+                exit(0)
         except Exception as e:
             logger.error(e)
 
@@ -54,7 +53,7 @@ class Extract():
         tmdb_data = TMDBDataFetcher.fetch(params['start_index'])
         
         # OMDB API
-        omdb_data = OMDBDataFetcher.fetch(params['start_index'], tmdb_data)
+        omdb_data = OMDBDataFetcher.fetch(params['start_index'], tmdb_data)      
         
         self._produce(tmdb_data, omdb_data)
         
