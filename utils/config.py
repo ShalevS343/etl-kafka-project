@@ -5,14 +5,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    PAGE_PER_SCAN = 1
-    MAX_WORKERS = 10
-    MAX_PAGES = 200
-    OMDB_API_KEY = getenv('OMDB_API_KEY')
-    TMDB_HEADERS = loads(getenv('TMDB_HEADERS'))
     CLOUDKARAFKA_HOSTNAME = getenv('CLOUDKARAFKA_HOSTNAME')
     CLOUDKARAFKA_USERNAME = getenv('CLOUDKARAFKA_USERNAME')
     CLOUDKARAFKA_PASSWORD = getenv('CLOUDKARAFKA_PASSWORD')
+    WORKERS = 10
+    MAX_PAGES = 200
+    OMDB_API_KEY = getenv('OMDB_API_KEY')
+    OMDB_URL = "http://www.omdbapi.com"
+    PAGE_PER_SCAN = 1
+    TMDB_HEADERS = loads(getenv('TMDB_HEADERS'))
+    TMDB_URLS = ["https://api.themoviedb.org/3/discover/movie", "https://api.themoviedb.org/3/movie"]
     
     # Kafka producer configuration
     PRODUCER_CONFIG = {
@@ -48,7 +50,7 @@ class Config:
         """
         
         cls._validate_page_per_scan()
-        cls._validate_max_workers()
+        cls._validate_workers()
         cls._validate_max_pages()
         cls._validate_omdb_api_key()
         cls._validate_redis_uri()
@@ -61,9 +63,9 @@ class Config:
             raise ValueError("PAGE_PER_SCAN must be a positive integer.")
 
     @classmethod
-    def _validate_max_workers(cls):
-        if not isinstance(cls.MAX_WORKERS, int) or cls.MAX_WORKERS <= 0:
-            raise ValueError("MAX_WORKERS must be a positive integer.")
+    def _validate_workers(cls):
+        if not isinstance(cls.WORKERS, int) or cls.WORKERS <= 0:
+            raise ValueError("WORKERS must be a positive integer.")
 
     @classmethod
     def _validate_max_pages(cls):

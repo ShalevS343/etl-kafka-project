@@ -1,44 +1,42 @@
 from datetime import datetime
 import math
 import requests
+from typing import Dict
 
 from src.extract.data_fetcher import DataFetcher
 from src.extract.thread_pool_manager import ThreadPoolManager
 from utils.config import Config
-from utils.interfaces.redis_interface import redis_interface
+from utils.data_structures.movie import Movie
+from utils.data_structures.thread_pool_parameters import Parameters
+
 
 
 class OMDBDataFetcher(DataFetcher):
-    @staticmethod
-    def fetch(start_index, new_movies):
+    def __init__(self, url):
+        self._url = url
+
+    def start(self, start_index: int, new_movies: Dict[str, Movie]) -> Dict[str, Movie]:
         """
-        Runs all of the functions in the class to get all of the data needed from the OMDB API.
+        A function that starts fetching OMDB data for new movies.
 
         Parameters:
-        - start_index: Start index for the current run.
-        - new_movies: New movies added to the program
+            start_index (int): The index to start fetching data from.
+            new_movies (List[Movie]): A list of new movies to fetch data for.
 
         Returns:
-        A dictionary containing all of the needed movie data from this API.
+            List[Movie]: A list of OMDB data for the new movies.
         """
-        
         if not len(new_movies):
             return {}
         
-        params = {
-            'max_range': math.ceil(len(new_movies) / Config.MAX_WORKERS),
-            'max_workers': Config.MAX_WORKERS,
-            'type': 1,
-            'new_movies': new_movies,
-            'start_index': start_index,
-            'max_pages': Config.MAX_PAGES}
-        omdb_data = ThreadPoolManager.execute_threads(OMDBDataFetcher._fetch_data, params)
+        omdb_fetch_params = Parameters(max_range=math.ceil(len(new_movies) / Config.WORKERS),
+                                        workers=Config.WORKERS, movies=new_movies, start_index=start_index)
+        omdb_data = ThreadPoolManager.execute_threads(self._fetch_data, omdb_fetch_params)
         return omdb_data
     
-    @staticmethod
-    def _fetch_data(params):
+    def _fetch_data(self, params: Parameters) -> Dict[str, Movie]:
         """
-        Fetches data from the OMDB API.
+        Gets the current movie imdb_id and sends it to self._api_call to get the data.
 
         Parameters:
         - params: A dictionary containing parameters from the Threading Pool.
@@ -47,21 +45,51 @@ class OMDBDataFetcher(DataFetcher):
         A dictionary containing data from the OMDB API.
         """
         
-        index = (params['range_index'] - params['start_index']) * 10 + params['worker_number']
-        if index >= len(params['new_movies']):
+        # Calculating the index of the current movie with parameters from the threading pool
+        index: int = (params.range_index - params.start_index) * params.workers + params.worker_number
+        
+        # In case the index does not exist in the movie dictionary (a page returned less results than expected)
+        if index >= len(params.movies):
             return {}
 
-        current_movie = list(params['new_movies'].items())[index]
-        imdb_id = current_movie[1].get('imdb_id')
+        # Get the current movie from the movie dictionary
+        current_movie: Movie = list(params.movies.items())[index][1]
+
+        # Make the API call to get the data
+        return self._api_call(current_movie.imdb_id)
+    
+    def _api_call(self, imdb_id: str) -> Dict[str, Movie]:
+        """
+        Makes an API call to the OMDB API with the given IMDB ID and returns the corresponding movie data.
+
+        Parameters:
+            imdb_id (str): A string representing the IMDB ID of the movie.
+
+        Returns:
+            Dict[str, Movie]: A dictionary with the IMDB ID and the movie data for the given IMDB ID.
+        """
+        response: requests.Response = requests.get(self._url, params={"apikey": Config.OMDB_API_KEY, "i": imdb_id})
+        response_json: dict = response.json()
         
-        if not imdb_id:
-            return {current_movie[0]: {'release_date': None, 'directors': None}}
+        # Format the data
+        return self._format_response(imdb_id, response_json)
+        
+    def _format_response(self, imdb_id: str, response_json: dict) -> Dict[str, Movie]:
+        """
+        Formats the response data from the OMDB API into a dictionary with the IMDB ID as the key.
 
-        url = 'http://www.omdbapi.com/'
+        Parameters:
+            imdb_id (str): The IMDB ID of the movie.
+            response_json (dict): The JSON response data from the OMDB API.
 
-        response = requests.get(url, params={"apikey": Config.OMDB_API_KEY, "i": imdb_id})
-        response_json = response.json()
-        original_date = datetime.strptime(response_json['Released'], "%d %b %Y") if 'Released' in response_json and response_json['Released'] != 'N/A' else None
-        formatted_date = original_date.strftime("%Y-%m-%d") if original_date is not None else None
-        year = formatted_date.split('-')[0] if formatted_date is not None else None
-        return {current_movie[0]: {'imdb_id': imdb_id, 'directors': response_json['Director'] if 'Director' in response_json else None, 'release_date': year}}
+        Returns:
+            Dict[str, Movie]: A dictionary containing the IMDB ID as the key and a Movie object with formatted data.
+        """
+        
+        date: datetime = datetime.strptime(response_json['Released'], "%d %b %Y") if 'Released' in response_json and response_json['Released'] != 'N/A' else None
+        formatted_date: str = date.strftime("%Y-%m-%d") if date is not None else None
+        year: str = formatted_date.split('-')[0] if formatted_date is not None else None
+
+        directors: str = response_json['Director'] if 'Director' in response_json else None
+
+        return {imdb_id: Movie(imdb_id=imdb_id, release_date=year, directors=directors)}

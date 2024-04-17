@@ -1,68 +1,113 @@
 import requests
+from typing import Dict, List, Tuple
+
+from src.extract.data_fetcher import DataFetcher
 from src.extract.thread_pool_manager import ThreadPoolManager
 from utils.config import Config
+from utils.data_structures.movie import Movie
+from utils.data_structures.thread_pool_parameters import Parameters
 from utils.interfaces.redis_interface import redis_interface
-from src.extract.data_fetcher import DataFetcher
 
 
 class TMDBDataFetcher(DataFetcher):
-    
-    @staticmethod
-    def fetch(start_index):
+    def __init__(self, urls: List[str]):
+        self._urls = urls
+    def start(self, start_index: int) -> Dict[str, Movie]:
         """
-        Runs all of the functions in the class to get all of the data needed from the TMDB API.
+        Starts the TMDB data fetch process.
 
-        Parameters:
-        - start_index: Start index for the current run.
+        Args:
+            start_index (int): The index to start fetching data from.
 
         Returns:
-        A dictionary containing all of the needed movie data from this API.
+            Dict[str, Movie]: A dictionary containing TMDB data for movies. The key is the IMDB ID and the data is the Movie object.
+        This method fetches TMDB data for movies using a thread pool. It first creates fetch parameters with the given start index, max workers, and steps.
+        Then it executes threads to fetch base movie data using the _fetch_movies method. The fetched data is used to fetch additional data using the _fetch_data method.
+        The additional data is then merged with the base data, including the imdb_id and rating. The merged data is returned as a dictionary.
         """
-        params = {
-            'max_range': Config.PAGE_PER_SCAN,
-            'max_workers': Config.MAX_WORKERS,
-            'type': 10,
-            'start_index': start_index,
-            'max_pages': Config.MAX_PAGES
-        }
-        tmdb_data = ThreadPoolManager.execute_threads(TMDBDataFetcher._fetch_movies, params=params)
-        additional_tmdb_data = ThreadPoolManager.execute_threads(TMDBDataFetcher._fetch_data, {**params, 'max_workers': 2 * Config.MAX_WORKERS, 'type': 1, 'data': tmdb_data})
-        tmdb_data = {key: {**tmdb_data[key], 'imdb_id': value['imdb_id'], 'rating': value['rating']} for key, value in additional_tmdb_data.items()}
-
+        
+        # Prepare the parameters for fetching the movie pages
+        fetch_params: Parameters = Parameters(workers=Config.WORKERS, steps=10, start_index=start_index)
+        # Fetch the movies from the TMDB API and check if they exist in the redis database
+        tmdb_data: Dict[str, Movie] = ThreadPoolManager.execute_threads(self._fetch_data, params=fetch_params)
+        if not len(tmdb_data):
+            return tmdb_data
+        
+        # Prepare the parameters for fetching the rating
+        fetch_params.workers = 2 * Config.WORKERS
+        fetch_params.steps = 1
+        fetch_params.movies = tmdb_data
+        
+        # Fetch the rating from the TMDB API and merge it
+        tmdb_data: Dict[str, Movie] = ThreadPoolManager.execute_threads(self._fetch_rating, params=fetch_params)
+        
         return tmdb_data
 
     
-    @staticmethod
-    def _fetch_movies(params):
+    def _fetch_data(self, params: Parameters) -> Dict[str, Movie]:
         """
-        Fetches base movie data from the TMDB API.
+        Gets movie data from the TMDB API.
 
         Parameters:
-        - params: A dictionary containing parameters from the Threading Pool.
-
+            params(Parameters): A parameter object containing parameters from the Threading Pool.
         Returns:
-        A dictionary containing base movie data.
+            Dict[str, Movie]: A dictionary containing id as key and the movie object as value.
         """
         
-        base_url = 'https://api.themoviedb.org/3/discover/movie'
-        page = params['range_index'] + params['worker_number']
-
+        # Calculate the page number for each worker
+        page: int = params.range_index + params.worker_number
         if not page:
             return {}
 
-        response = requests.get(base_url, headers=Config.TMDB_HEADERS,
+        return self._api_call_page(page)
+    
+    def _api_call_page(self, page: int) -> Dict[str, Movie]:
+        """
+        Makes an API call to retrieve a specific page of movie data from the TMDB API.
+
+        Parameters:
+            page (int): The page number of the movie data to retrieve.
+
+        Returns:
+            Dict[str, Movie]: A dictionary containing the movie data, where the key is the movie ID and the value is the Movie object.
+        """
+        
+        # The url for the api call
+        url: str = self._urls[0]
+        # Make the api call
+        response: requests.Response = requests.get(url, headers=Config.TMDB_HEADERS,
                                 params={
                                     "page": page, 
                                     "with_original_language": "en", 
                                     "region": "US",
-                                    "primary_release_date.lte": "2006-12-31",
+                                    "primary_release_date.lte": "2010-12-31",
                                 })
-        data = response.json()
-        return {movie['title']: {'id': movie['id'], 'page': page} for movie in data.get('results', [])}
+        movie_data: dict = response.json()
+        if "results" not in movie_data:
+            return {}
+        
+        return self._format_data_page(movie_data)
+        
+    def _format_data_page(self, data: dict) -> Dict[str, Movie]:
+        """
+        Formats the given data into a dictionary of movies.
+
+        Parameters:
+            data (dict): The data to be formatted.
+
+        Returns:
+            Dict[str, Movie]: A dictionary containing the formatted movies.
+        """
+        # Format results
+        formatted_data: Dict[str, Movie] = {}
+        for movie in data.get('results', []):
+            if 'id' in movie and 'title' in movie:
+                formatted_data[movie['id']] = Movie(movie_name=movie['title'])
+            
+        return formatted_data
 
 
-    @staticmethod
-    def _fetch_data(params):
+    def _fetch_rating(self, params: Parameters) -> Dict[str, Movie]:
         """
         Gets movie data from the TMDB API.
 
@@ -72,15 +117,57 @@ class TMDBDataFetcher(DataFetcher):
         Returns:
         A dictionary containing additional movie data.
         """
-        index = (params['range_index'] - params['start_index']) * 20 + params['worker_number']
-        if index >= len(params['data']):
+        
+        # Calculating the index of the current movie with parameters from the threading pool for each page, each page has 20 movies
+        index: int = (params.range_index - params.start_index) * 20 + params.worker_number
+        if index >= len(params.movies):
             return {}
         
         
+        # Get the movie tuple
+        movie: Tuple[str, Movie] = list(params.movies.items())[index]
         
-        result = list(params['data'].items())[index]
-        url = f"https://api.themoviedb.org/3/movie/{result[1]['id']}?language=en-US"
-        response = requests.get(url, headers=Config.TMDB_HEADERS).json()
-        if redis_interface.get_by_id(response['imdb_id'])[0] != 0:
+        # Get the movie name and id from the movie tuple
+        movie_name: str = movie[1].movie_name
+        movie_id: str = movie[0]
+        
+        return self._api_call_rating(movie_id, movie_name)
+        
+    def _api_call_rating(self, movie_id: str, movie_name: str) -> Dict[str, Movie]:
+        """
+        Makes an API call to retrieve movie data from the TMDB API.
+
+        Parameters:
+            movie_id: The id of the movie.
+            movie_name: The name of the movie.
+
+        Returns:
+        Dict[str, Movie]: A dictionary containing additional movie data.
+        """
+        url:str = f"{self._urls[1]}/{movie_id}?language=en-US"
+        response: requests.Response = requests.get(
+            url, headers=Config.TMDB_HEADERS)
+        response_json: dict = response.json()
+        
+        if "imdb_id" not in response_json:
             return {}
-        return {result[0]: {'imdb_id': response['imdb_id'], 'rating': response['vote_average'][0]}}
+        
+        # Check if the movie exists in the redis database
+        if redis_interface.get_by_id(response_json['imdb_id']):
+            return {}
+        
+        return self._format_data_rating(response_json, movie_name)
+    
+    def _format_data_rating(self, response: dict, movie_name: str) -> Dict[str, Movie]:
+        """
+        Formats the given data into a dictionary of movies.
+
+        Parameters:
+            response: The data to be formatted.
+            movie_name: The name of the movie.
+
+        Returns:
+        Dict[str, Movie]: A dictionary containing the formatted movies.
+        """
+        # Format results
+        return {response['imdb_id']: Movie(imdb_id=response['imdb_id'], rating=str(response['vote_average'])[0], movie_name=movie_name)}

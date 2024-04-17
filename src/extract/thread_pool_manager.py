@@ -1,32 +1,38 @@
 from concurrent.futures import ThreadPoolExecutor
-from tqdm import tqdm
+from typing import Callable, Dict
+
+from utils.data_structures.movie import Movie
+from utils.data_structures.thread_pool_parameters import Parameters
 
 class ThreadPoolManager:
     @staticmethod
-    def execute_threads(callback, params: dict):
+    def execute_threads(callback: Callable, params: Parameters) -> Dict[str, Movie]:
         """
-        Runs multiple threads using a thread pool.
-
+        Executes threads in a thread pool.
+        
         Parameters:
-        - callback: The function to be executed by each thread.
-        - params: A dictionary containing parameters for the function and thread pool.
-
+        - callback (Callable): The function to execute in the thread pool.
+        - params (Parameters): The parameters for the thread pool.
+        
         Returns:
-        A dictionary containing the aggregated data from all threads.
+        - Dict[str, Movie]: A dictionary containing the results of the threads.
         """
         
-        with ThreadPoolExecutor(params['max_workers']) as executor:
-            data = {}
-            total_iterations = params['max_range'] * params['type']
-            params['range_index'] = 0
+        with ThreadPoolExecutor(params.workers) as executor:
+            data: Dict[str, Movie] = {}
+            
+            # The loop will iterate from the start_index to the max_range by steps of 
+            for range_index in range(params.start_index, params.max_range,
+                                    min(params.max_range + 1 - params.range_index, params.steps + params.range_index)):
+                params.range_index = range_index
+                
+                workers = []
+                for worker_number in range(params.workers):
+                    params.worker_number = worker_number
+                    workers.append(executor.submit(callback, params))
 
-            with tqdm(total=total_iterations, desc=f"Running {callback.__name__}") as pbar_outer:
-                for range_index in range(params['start_index'], min(params['max_range'] + params['start_index'], params['max_pages']), min(params['max_range'] + 1 - params['range_index'], params['type'] + params['range_index'])):
-                    params['range_index'] = range_index
-                    workers = [executor.submit(callback, {**params, 'worker_number': worker_number}) for worker_number in range(params['max_workers'])]
-
-                    for worker in workers:
-                        thread_data = worker.result()
-                        data.update(thread_data) if isinstance(thread_data, dict) else [data.update(thread) for thread in thread_data]  
-                        pbar_outer.update(params['type'])
+                # Gets results from the workers and adds them to the data list
+                for worker in workers:
+                    worker_result = worker.result()
+                    data.update(worker_result) if isinstance(worker_result, dict) else [data.update(result) for result in worker_result]
             return data

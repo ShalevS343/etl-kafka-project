@@ -1,27 +1,31 @@
 from abc import ABC, abstractmethod
+from typing import Dict
 
+from utils.data_structures.movie import Movie
+from utils.data_structures.thread_pool_parameters import Parameters
 
 class DataFetcher(ABC):
     @abstractmethod
-    def fetch(self, start_index, new_movies):
+    def start(self, start_index: int, new_movies: Dict[str, Movie]) -> Dict[str, Movie]:
         """
-        Runs all of the functions in the class to get all of the data needed from the OMDB API.
-
+        Starts the data fetch process for the API the data will be returned as a Movie Dict object with their imdb_id as key.
+        
         Parameters:
-        - params: Start index for the current run.
+            start_index(int): Start index for the current run.
+            new_movies(Dict[str, Movie]): New movies added to the program.
 
         Returns:
-        A dictionary containing all of the needed movie data from this API.
+            Dict[str, Movie]: Dictionary of Movie objects and imdb_id as key.
         """
     
     @abstractmethod
-    def _fetch_data(self, params):
+    def _fetch_data(self, params: Parameters) -> Dict[str, Movie]:
         """
-        Fetches data from the OMDB API.
+        Fetches data from an API.
 
         Parameters:
-        - params: A dictionary containing parameters from the Threading Pool.
+            params(Parameters): A parameter object containing parameters from the Threading Pool.
 
         Returns:
-        A dictionary containing data from the OMDB API.
+            List[Movie]: List of Movie objects.
         """
