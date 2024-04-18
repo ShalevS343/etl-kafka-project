@@ -1,19 +1,16 @@
-from pyspark.sql import SparkSession
+import pandas as pd
 from pathlib import Path
 
 
-class ActorHandler():
-    def __init__(self, spark_master="local[*]"):
+class ActorHandler:
+    def __init__(self):
         _current_dir = Path(__file__).resolve().parent
-        _csv_file_path = str(_current_dir.parent.parent/ "src" / "data_sources" / "actors.csv")
-        
-        # Create a SparkSession
-        _spark = SparkSession.builder.master(spark_master).appName("actor_csv").getOrCreate()
+        _csv_file_path = _current_dir.parent.parent / "res" / "actors.csv"
 
-        # Read the CSV file using SparkSession
-        self._df = _spark.read.option("header", "true").csv(_csv_file_path)
-        
-    def get_actor(self, imdb_id):
+        # Read the CSV file using Pandas
+        self._df = pd.read_csv(_csv_file_path)
+
+    def get_actor(self, imdb_id: str) -> str:
         """
         Fetches the actor from the DataFrame based on the IMDB ID.
 
@@ -23,11 +20,7 @@ class ActorHandler():
         Returns:
         - actor (str): The actor of the movie.
         """
-        actors = self._df.filter(self._df['FilmID'] == imdb_id).select('Actor').collect()
-        if not len(actors):
+        actors = self._df[self._df['FilmID'] == imdb_id]['Actor'].tolist()
+        if not actors:
             return None
-        return [row['Actor'] for row in actors]
-
-        
-# Create a singleton instance of Genre Handler
-actor_handler = ActorHandler()
+        return ', '.join(actors)

@@ -1,15 +1,19 @@
+
 import sys
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(current_dir, '..'))
 
-from src.transform.transform import Transform
-from src.transform.bafta_handler import bafta_handler
 from utils.config import Config
+from utils.interfaces.kafka_interface import KafkaInterface
+from src.transform.transformer import Transformer
 
 if __name__ == "__main__":
     Config.validate_config()
-    t = Transform()
-    t.start()
     
+    # k = KafkaInterface()
+    # k.clean_buffer(['nosaqtgg-tmdb-api', 'nosaqtgg-omdb-api'])
+    
+    t = Transformer(['nosaqtgg-tmdb-api', 'nosaqtgg-omdb-api'])
+    t.transform()

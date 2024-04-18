@@ -1,15 +1,17 @@
 from abc import ABC, abstractmethod
+from typing import List
+
 
 class AwardsHandler(ABC):
     @abstractmethod
-    def get_awards(self, film):
+    def get_awards(self, film: str) -> List[str]:
         """
-        Fetches the awards from the DataFrame based on the Film name.
+        Retrieves the list of awards for a given film.
 
         Parameters:
-        - film (str): The name of the movie.
+            film (str): The name of the film.
 
         Returns:
-        - awards (array): the awards of the movie.
+            List[str]: A list of awards for the film.
         """
         pass

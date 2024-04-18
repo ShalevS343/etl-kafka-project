@@ -1,25 +1,55 @@
 import json
-
 from confluent_kafka import Producer, Consumer, KafkaException
+from typing import Callable, Dict, List
 
+from utils.data_structures.movie import Movie
 from utils.config import Config
 from utils.logging import logger
+from utils.singleton import Singleton
 
-class KafkaInterface:
-    def __init__(self):     
-        self._consumer = Consumer(Config.CONSUMER_CONFIG)
-        self._producer = Producer(Config.PRODUCER_CONFIG)
 
-    def produce_to_topic(self, topic, data):
+class KafkaInterface(Singleton):
+    def __init__(self, timeout_interval: int = 10):
+        self._consumer: Consumer = Consumer(Config.CONSUMER_CONFIG)
+        self._producer: Producer = Producer(Config.PRODUCER_CONFIG)
+        self._timeout_interval = timeout_interval
+
+    def update_timeout_interval(self, interval: int) -> None:
+        self._timeout_interval = interval
+
+    def produce_to_topic(self, topic: str, data: Dict[str, Movie]) -> None:
+        """
+        Produce JSON message to the specified topic.
+
+        Parameters:
+            topic (str): The topic to which the message will be produced.
+            data (Dict[str, Movie]): A dictionary of movies to produce to the topic.
+
+        Returns:
+            None
+        """
+
         try:
             # Produce JSON message to the specified topic
             for title, information in data.items():
-                self._producer.produce(topic, key=None, value=json.dumps({title: information}))
+                movie_json = json.dumps(information, cls=Movie.MovieEncoder)
+                self._producer.produce(
+                    topic, key=title, value=movie_json)
                 self._producer.flush()
         except KafkaException as e:
             logger.exception(f"Error producing to {topic}: {e}")
 
-    def consume_from_topic(self, topics, callback):
+    def subscribe_to_topics(self, topics: List[str], callback: Callable) -> None:
+        """
+        Consume data from the specified topics and pass it to the callback function.
+
+        Parameters:
+            topics (List[str]): The list of topics to consume from.
+            callback (Callable): The function to call when a message is received.
+
+        Returns:
+            None
+        """
         self._consumer.subscribe(topics)
 
         try:
@@ -34,13 +64,30 @@ class KafkaInterface:
                 # Process the consumed message
                 data = json.loads(msg.value())
                 callback(msg.topic(), data)
-                
+
                 self._consumer.commit()
         except KafkaException as e:
             logger.exception(f"Error consuming from {msg.topic()}: {e}")
         finally:
             self._consumer.close()
+            
+    def clean_buffer(self, topics: List[str]) -> None:
+        self._consumer.subscribe(topics)
 
+        try:
+            while True:
+                msg = self._consumer.poll(1.0)
 
-# Singleton instance of KafkaInterface for easy access
-kafka_interface = KafkaInterface()
+                if msg is None:
+                    continue
+                if msg.error():
+                    raise KafkaException(msg.error())
+
+                # Process the consumed message
+                data = json.loads(msg.value())
+                print(json.dumps(data, indent=2))
+                self._consumer.commit()
+        except KafkaException as e:
+            logger.exception(f"Error consuming from {msg.topic()}: {e}")
+        finally:
+            self._consumer.close()

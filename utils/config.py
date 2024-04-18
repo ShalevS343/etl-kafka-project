@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Config:
     CLOUDKARAFKA_HOSTNAME = getenv('CLOUDKARAFKA_HOSTNAME')
     CLOUDKARAFKA_USERNAME = getenv('CLOUDKARAFKA_USERNAME')
@@ -14,8 +15,9 @@ class Config:
     OMDB_URL = "http://www.omdbapi.com"
     PAGE_PER_SCAN = 1
     TMDB_HEADERS = loads(getenv('TMDB_HEADERS'))
-    TMDB_URLS = ["https://api.themoviedb.org/3/discover/movie", "https://api.themoviedb.org/3/movie"]
-    
+    TMDB_URLS = ["https://api.themoviedb.org/3/discover/movie",
+                 "https://api.themoviedb.org/3/movie"]
+
     # Kafka producer configuration
     PRODUCER_CONFIG = {
         'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
@@ -39,7 +41,7 @@ class Config:
     }
 
     REDIS_URI = getenv('REDIS_URI')
-    
+
     @classmethod
     def validate_config(cls):
         """
@@ -48,7 +50,7 @@ class Config:
         This method validates various configuration parameters such as page per scan, maximum workers,
         maximum pages, OMDB API key, TMDB headers, and Kafka configurations.
         """
-        
+
         cls._validate_page_per_scan()
         cls._validate_workers()
         cls._validate_max_pages()
@@ -76,7 +78,7 @@ class Config:
     def _validate_omdb_api_key(cls):
         if not cls.OMDB_API_KEY:
             raise ValueError("OMDB_API_KEY must be provided.")
-    
+
     @classmethod
     def _validate_redis_uri(cls):
         if not cls.REDIS_URI:
@@ -90,18 +92,21 @@ class Config:
     @classmethod
     def _validate_cloudkafka_config(cls):
         if not cls.CLOUDKARAFKA_HOSTNAME or not cls.CLOUDKARAFKA_USERNAME or not cls.CLOUDKARAFKA_PASSWORD:
-            raise ValueError("CLOUDKARAFKA_HOSTNAME, CLOUDKARAFKA_USERNAME, and CLOUDKARAFKA_PASSWORD must be provided.")
+            raise ValueError(
+                "CLOUDKARAFKA_HOSTNAME, CLOUDKARAFKA_USERNAME, and CLOUDKARAFKA_PASSWORD must be provided.")
 
         # Validate Kafka Producer Configuration
         if not isinstance(cls.PRODUCER_CONFIG, dict):
             raise ValueError("Producer configuration must be a dictionary.")
         for key in ['bootstrap.servers', 'session.timeout.ms', 'security.protocol', 'sasl.mechanisms', 'sasl.username', 'sasl.password']:
             if key not in cls.PRODUCER_CONFIG or not cls.PRODUCER_CONFIG[key]:
-                raise ValueError(f"Invalid producer configuration. Missing or empty value for '{key}'.")
+                raise ValueError(
+                    f"Invalid producer configuration. Missing or empty value for '{key}'.")
 
         # Validate Kafka Consumer Configuration
         if not isinstance(cls.CONSUMER_CONFIG, dict):
             raise ValueError("Consumer configuration must be a dictionary.")
         for key in ['bootstrap.servers', 'group.id', 'session.timeout.ms', 'default.topic.config', 'security.protocol', 'sasl.mechanisms', 'sasl.username', 'sasl.password']:
             if key not in cls.CONSUMER_CONFIG or not cls.CONSUMER_CONFIG[key]:
-                raise ValueError(f"Invalid consumer configuration. Missing or empty value for '{key}'.")
+                raise ValueError(
+                    f"Invalid consumer configuration. Missing or empty value for '{key}'.")

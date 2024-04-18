@@ -1,32 +1,30 @@
-from pyspark.sql import SparkSession
+import pandas as pd
 from pathlib import Path
+from typing import List
+
 from src.transform.awards_handler import AwardsHandler
 
-class BaftaHandler(AwardsHandler):
-    def __init__(self, spark_master="local[*]"):
-        _current_dir = Path(__file__).resolve().parent
-        _csv_file_path = str(_current_dir.parent.parent/ "src" / "data_sources" / "bafta_awards.csv")
-        
-        # Create a SparkSession
-        _spark = SparkSession.builder.master(spark_master).appName("bafta_csv").getOrCreate()
 
-        # Read the CSV file using SparkSession
-        self._df = _spark.read.option("header", "true").csv(_csv_file_path)
+class BaftaHandler(AwardsHandler):
+    def __init__(self):
+        _current_dir = Path(__file__).resolve().parent
+        _csv_file_path = _current_dir.parent.parent / "res" / "bafta_awards.csv"
         
-    def get_awards(self, film):
+        # Read the CSV file using Pandas
+        self._df = pd.read_csv(_csv_file_path)
+
+    def get_awards(self, film: str) -> List[str]:
         """
-        Fetches the awards from the DataFrame based on the Film name.
+        Retrieves the list of awards for a given film from the BaftaHandler's DataFrame.
 
         Parameters:
-        - film (str): The name of the movie.
+            film (str): The name of the film.
 
         Returns:
-        - awards (array): the awards of the movie.
+            List[str]: A list of awards for the film, or None if no awards are found.
         """
-        awards = self._df.filter(self._df['nominee'] == film).select('category').collect()
-        if not len(awards):
-            return None
-        return [row['category'] for row in awards]
         
-# Create a singleton instance of Genre Handler
-bafta_handler = BaftaHandler()
+        awards: List[str] = self._df[self._df['nominee'] == film]['category'].tolist()
+        if not awards:
+            return None
+        return awards
