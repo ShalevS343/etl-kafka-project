@@ -21,7 +21,6 @@ class Config:
     # Kafka producer configuration
     PRODUCER_CONFIG = {
         'bootstrap.servers': CLOUDKARAFKA_HOSTNAME,
-        'session.timeout.ms': 6000,
         'security.protocol': 'SASL_SSL',
         'sasl.mechanisms': 'SCRAM-SHA-256',
         'sasl.username': CLOUDKARAFKA_USERNAME,
@@ -40,7 +39,12 @@ class Config:
         'sasl.password': CLOUDKARAFKA_PASSWORD
     }
 
+    REDIS_INDEX = 'etl-db'
     REDIS_URI = getenv('REDIS_URI')
+    
+    KAFKA_TOPICS = ['nosaqtgg-tmdb-api', 'nosaqtgg-omdb-api']
+    
+    MAX_MESSAGES = 10000
 
     @classmethod
     def validate_config(cls):
@@ -98,7 +102,7 @@ class Config:
         # Validate Kafka Producer Configuration
         if not isinstance(cls.PRODUCER_CONFIG, dict):
             raise ValueError("Producer configuration must be a dictionary.")
-        for key in ['bootstrap.servers', 'session.timeout.ms', 'security.protocol', 'sasl.mechanisms', 'sasl.username', 'sasl.password']:
+        for key in ['bootstrap.servers', 'security.protocol', 'sasl.mechanisms', 'sasl.username', 'sasl.password']:
             if key not in cls.PRODUCER_CONFIG or not cls.PRODUCER_CONFIG[key]:
                 raise ValueError(
                     f"Invalid producer configuration. Missing or empty value for '{key}'.")

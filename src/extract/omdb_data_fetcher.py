@@ -11,8 +11,8 @@ from utils.data_structures.thread_pool_parameters import Parameters
 
 
 class OMDBDataFetcher(DataFetcher):
-    def __init__(self, url):
-        self._url = url
+    def __init__(self):
+        self._url = Config.OMDB_URL
 
     def start(self, start_index: int, new_movies: Dict[str, Movie]) -> Dict[str, Movie]:
         """

@@ -13,7 +13,7 @@ if __name__ == "__main__":
     Config.validate_config()
     
     # k = KafkaInterface()
-    # k.clean_buffer(['nosaqtgg-tmdb-api', 'nosaqtgg-omdb-api'])
+    # k.clean_buffer()
     
-    t = Transformer(['nosaqtgg-tmdb-api', 'nosaqtgg-omdb-api'])
+    t = Transformer()
     t.transform()

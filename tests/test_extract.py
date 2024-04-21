@@ -14,8 +14,8 @@ from src.extract.data_fetcher import DataFetcher
 if __name__ == "__main__":
     Config.validate_config()
 
-    tmdb = TMDBDataFetcher(Config.TMDB_URLS)
-    omdb = OMDBDataFetcher(Config.OMDB_URL)
+    tmdb = TMDBDataFetcher()
+    omdb = OMDBDataFetcher()
 
     fetchers: Dict[str, DataFetcher] = {'tmdb-api': tmdb, 'omdb-api': omdb}
     e = Extractor(fetchers, 5)

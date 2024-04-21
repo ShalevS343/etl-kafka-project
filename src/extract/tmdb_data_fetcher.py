@@ -1,5 +1,6 @@
+import logging
 import requests
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 from src.extract.data_fetcher import DataFetcher
 from src.extract.thread_pool_manager import ThreadPoolManager
@@ -8,10 +9,12 @@ from utils.data_structures.movie import Movie
 from utils.data_structures.thread_pool_parameters import Parameters
 from utils.interfaces.redis_interface import RedisInterface
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class TMDBDataFetcher(DataFetcher):
-    def __init__(self, urls: List[str]):
-        self._urls = urls
+    def __init__(self):
+        self._urls = Config.TMDB_URLS
         self._redis_interface = RedisInterface()
 
     def start(self, page_index: int) -> Dict[str, Movie]:
@@ -160,6 +163,7 @@ class TMDBDataFetcher(DataFetcher):
 
         # Check if the movie exists in the redis database
         if self._redis_interface.get_by_id(response_json['imdb_id']):
+            logger.info("Exists in Redis")
             return {}
 
         return self._format_data_rating(response_json, movie_name)

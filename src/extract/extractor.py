@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Dict, List, Tuple
 
@@ -5,10 +6,9 @@ from src.extract.data_fetcher import DataFetcher
 from utils.config import Config
 from utils.data_structures.movie import Movie
 from utils.interfaces.kafka_interface import KafkaInterface
-from utils.logging import logger
 
-import json
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class Extractor():
     def __init__(self, data_fetchers: Dict[str, DataFetcher], extractor_interval=300):
@@ -34,45 +34,40 @@ class Extractor():
         """
         Extracts data from the data fetchers and send the data through Kafka.
         """
+        
+        logger.info('Extraction Starting...')
 
         start_index: int = 0
-        # try:
-        while start_index < Config.MAX_PAGES:
+        try:
+            while start_index < Config.MAX_PAGES:
+                # Get the first fetcher from the dictionary
+                first_fetcher: DataFetcher = list(self._data_fetchers.items())[0][1]
+                # Get the first topic from the dictionary
+                topic: str = list(self._data_fetchers.items())[0][0]
 
-            # Get the first fetcher from the dictionary
-            first_fetcher: DataFetcher = list(
-                self._data_fetchers.items())[0][1]
-            # Get the first topic from the dictionary
-            topic: str = list(self._data_fetchers.items())[0][0]
+                # Fetch new movies using the first fetcher
+                new_movie_data: Dict[str, Movie] = first_fetcher.start(start_index)
 
-            # Fetch new movies using the first fetcher
-            new_movie_data: Dict[str, Movie] = first_fetcher.start(start_index)
+                topic_data: Dict[str, Dict] = {topic: new_movie_data}
+                # For every other fetcher send the new movies to return only the data for the needed movies
+                for topic, data_fetcher in list(self._data_fetchers.items())[1:]:
+                    fetched_data: Dict[str, Movie] = data_fetcher.start(
+                        start_index, new_movie_data)
+                    topic_data[topic] = fetched_data
+                    
+                # Send the data through Kafka
+                self._produce(topic_data)
 
-            topic_data: Dict[str, Dict] = {topic: new_movie_data}
-            # For every other fetcher send the new movies to return only the data for the needed movies
-            for topic, data_fetcher in list(self._data_fetchers.items())[1:]:
-                fetched_data: Dict[str, Movie] = data_fetcher.start(
-                    start_index, new_movie_data)
-                topic_data[topic] = fetched_data
-                
+                # Pepare for the next scan
+                start_index += Config.PAGE_PER_SCAN
+                logger.info("Next scan for pages %d-%d in %d seconds",
+                            start_index, start_index + Config.PAGE_PER_SCAN, self._extractor_interval)
 
-            self._produce(topic_data)
+                break
 
-
-            # Produce the data to the topic
-            # self._kafka_interface.produce_to_topic(f"{Config.CLOUDKARAFKA_USERNAME}-{topic}", new_movie_data)
-            # self._kafka_interface.produce_to_topic(f"{Config.CLOUDKARAFKA_USERNAME}-{topic}", fetched_data)
-
-            # Pepare for the next scan
-            start_index += Config.PAGE_PER_SCAN
-            logger.info("Next scan for pages %d-%d in %d seconds",
-                        start_index, start_index + Config.PAGE_PER_SCAN, self._extractor_interval)
-
-            break
-
-            time.sleep(self._extractor_interval)
-        # except Exception as e:
-        #     logger.error(e)
+                time.sleep(self._extractor_interval)
+        except Exception as e:
+            logger.error(e)
 
     def _produce(self, topic_data: Dict[str, Dict[str, Movie]]) -> None:
         # Zip the two dictionaries together

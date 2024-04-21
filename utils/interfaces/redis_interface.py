@@ -1,15 +1,19 @@
 import redis
 from redis.exceptions import ResponseError
 from redisearch import Client
-from typing import List
+
 from enum import Enum
+import logging
+from typing import List
 
 from utils.config import Config
 from utils.data_structures.movie import Movie
-from utils.logging import logger
+from utils.exceptions import NoIMDBInMovieError
 from utils.schemas import Schemas
 from utils.singleton import Singleton
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class MovieField(Enum):
     IMDB_ID = 'imdb_id'
@@ -23,17 +27,17 @@ class MovieField(Enum):
 
 
 class RedisInterface(Singleton):
-    def __init__(self, redis_index: str = 'etl-db'):
-        self._redis: redis.StrictRedis = redis.StrictRedis.from_url(
-            Config.REDIS_URI)
-        self._redis_index = redis_index
-        self._index_exists(self._redis_index)
+    def __init__(self):
+        self._redis: redis.StrictRedis = redis.StrictRedis.from_url(Config.REDIS_URI)
+        self._redis_index = Config.REDIS_INDEX
+        self._index_exists()
+        self._client: Client = Client(self._redis_index, conn=self._redis)
+        
 
-    def _index_exists(self, index_name: int):
+    def _index_exists(self):
         try:
             # Try to get information about the index
-            self._redis.execute_command('FT.INFO', index_name)
-            self._client: Client = Client(index_name, conn=self._redis)
+            self._redis.execute_command('FT.INFO', self._redis_index)
         except redis.exceptions.ResponseError:
             self._create_index()
 
@@ -41,7 +45,7 @@ class RedisInterface(Singleton):
         self._client: Client = Client(self._redis_index, conn=self._redis)
         self._client.create_index(Schemas.REDIS_SCHEMA)
 
-    def set_value(self, imdb_id: str, movie: Movie) -> int:
+    def set_value(self, movie: Movie) -> int:
         """
         Set a value in the Redisearch index.
 
@@ -52,35 +56,43 @@ class RedisInterface(Singleton):
         Returns:
             int: The number of documents added to the index.
         """
-        try:
-            cleaned_value = self._sanitize_data(movie)
+        try:        
+            if movie.imdb_id is None:
+                raise NoIMDBInMovieError()
 
+            # Format data
+            if None in movie.__dict__.values():
+                movie = self._format_data(movie)
+                
             # Add the document to the Redisearch index
-            self._client.add_document(imdb_id, **cleaned_value)
+            self._client.add_document(movie.imdb_id, **movie.__dict__)
+        except Exception as e:
+            print(movie)
+            logger.error(e)
 
-            return len(cleaned_value)
-        except ResponseError:
-            return -1
+    def _format_data(self, movie: Movie) -> Movie:
+        """
+        Formats the given movie object by replacing any None values in its attributes with the string "None".
+        
+        Parameters:
+            movie (Movie): The movie object to be formatted.
+        
+        Returns:
+            Movie: The formatted movie object.
+        """
+        movie = Movie.from_dict({k: "None" if v is None else v for k, v in movie.__dict__.items()})
+        return movie
 
-    def _sanitize_data(self, movie):
-        cleaned_movie = {
-            k: v if v is not None else "None" for k, v in movie.items()}
-
-        # Convert array values to comma-separated strings
-        for field, field_value in movie.items():
-            if isinstance(field_value, list):
-                cleaned_movie[field] = ','.join(field_value)
-
-    def _decode(self, results):
-        decoded_movies_list = []
+    def _decode(self, results) -> List[dict]:
+        decoded_movies = []
         for movie in results:
             decoded_movie = {}
             for key, value in movie.items():
                 decoded_key = key.decode('utf-8')
                 decoded_value = value.decode('utf-8')
                 decoded_movie[decoded_key] = decoded_value
-            decoded_movies_list.append(decoded_movie)
-        return decoded_movies_list
+            decoded_movies.append(decoded_movie)
+        return decoded_movies
 
     def _parse(self, response: List) -> List[bytes]:
 
@@ -96,11 +108,14 @@ class RedisInterface(Singleton):
 
         return parsed_results
 
-    def _movie_search(self, field: MovieField, term: str):
+    def _movie_search(self, field: MovieField, term: str) -> List:
         try:
             response: List = self._redis.execute_command(
-                'FT.SEARCH', 'etl-db', f'@{field.value}:{term}')
+                'FT.SEARCH', self._redis_index, f'@{field.value}:{term}')
 
+            if response[0] == 0:
+                return []
+            
             # Parse the results parsed results
             parsed_results: List[bytes] = self._parse(response)
 
@@ -111,7 +126,7 @@ class RedisInterface(Singleton):
             return []
 
     def get_by_id(self, imdb_id: str):
-        return self._movie_search(MovieField.IMDB_ID, imdb_id)
+        return self._movie_search(MovieField.IMDB_ID, f'{imdb_id}')
 
     def get_by_genre(self, genre):
         return self._movie_search(MovieField.GENRES, f'*{genre}*')

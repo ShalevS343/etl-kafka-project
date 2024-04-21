@@ -19,7 +19,6 @@ class ApiEntityHandler():
 
         """
         self._kafka_interface = KafkaInterface()
-        
         self._pyspark_interface = PysparkInterface()
         
         self._bafta_handler = BaftaHandler()
@@ -28,7 +27,7 @@ class ApiEntityHandler():
         self._actor_handler = ActorHandler()
         
     
-    def start_processing(self, kafka_topics: List[str]) -> None:
+    def start_processing(self) -> None:
         """
         A method that starts processing data by subscribing to Kafka topics.
 
@@ -38,7 +37,7 @@ class ApiEntityHandler():
         Returns:
             None
         """
-        self._kafka_interface.subscribe_to_topics(kafka_topics, self.send_to_handler)
+        self._kafka_interface.subscribe_to_topics(self.send_to_handler)
 
     def send_to_handler(self, topic: str, data: dict) -> None:
         """
@@ -84,4 +83,4 @@ class ApiEntityHandler():
         bafta_awards = self._bafta_handler.get_awards(movie_name) or []
         
         awards.extend(oscar_awards + bafta_awards)
-        return ','.join(awards) if awards else None
+        return ', '.join(awards) if awards else None

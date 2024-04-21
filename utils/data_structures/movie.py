@@ -35,7 +35,7 @@ class Movie:
         """
         Return a string representation of the Movie object.
         """
-        return f"Movie: {self.__dict__}"
+        return json.dumps(self.__dict__, indent=2)
 
     @classmethod
     def from_dict(cls, data: dict) -> "Movie":

@@ -1,8 +1,8 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import Row
 from pyspark.sql.functions import lit, when, col
-# from load.loader import loader
 
+from src.load.loader import Loader
 from utils.data_structures.movie import Movie
 from utils.schemas import Schemas
 from utils.singleton import Singleton
@@ -26,6 +26,7 @@ class PysparkInterface(Singleton):
 
         # Create an empty DataFrame
         self._df = self._spark.createDataFrame([], schema=self._movie_schema)
+        self._loader = Loader()
         
     def edit_row_and_visualize(self, imdb_id: str, movie: Movie):
                 
@@ -57,13 +58,15 @@ class PysparkInterface(Singleton):
         if not filtered_df.isEmpty():
             # Update dataframe to remove row
             self._df = self._df.filter(f"imdb_id != '{imdb_id}'")
+            
             # Clear cache
-            self._df.unpersist()
+            self._spark.catalog.clearCache()
                         
             # Load the data into Redis
             row = filtered_df.first()
             json_row = row.asDict()
             json_row.pop('touch_counter')
-            # loader.load(json_row)
+            movie = Movie.from_dict(json_row)
+            self._loader.load(movie)
         
         self._df.show()
