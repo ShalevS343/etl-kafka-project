@@ -162,7 +162,7 @@ class TMDBDataFetcher(DataFetcher):
             return {}
 
         # Check if the movie exists in the redis database
-        if self._redis_interface.get_by_id(response_json['imdb_id']):
+        if self._redis_interface.get_by_imdb_id(response_json['imdb_id']):
             logger.info("Exists in Redis")
             return {}
 

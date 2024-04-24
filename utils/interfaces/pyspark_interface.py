@@ -1,6 +1,6 @@
+from pyspark import StorageLevel
 from pyspark.sql import SparkSession
-from pyspark.sql import Row
-from pyspark.sql.functions import lit, when, col
+from pyspark.sql.functions import col, lit
 
 from src.load.loader import Loader
 from utils.data_structures.movie import Movie
@@ -16,9 +16,9 @@ class PysparkInterface(Singleton):
         Parameters:
         - spark_master (str): Spark master URL. Default is "local[*]" for local execution.
         """
-        # Create a SparkSession
+        # Create a SparkSession with optimized configurations
         self._spark = SparkSession.builder.master(spark_master).appName("Transform") \
-            .config("spark.driver.memory", "1g").config("spark.executor.memory", "4g") \
+            .config("spark.driver.memory", "4g").config("spark.executor.memory", "8g") \
             .getOrCreate()
 
         # Define schema for the DataFrame (modify as needed)
@@ -26,47 +26,50 @@ class PysparkInterface(Singleton):
 
         # Create an empty DataFrame
         self._df = self._spark.createDataFrame([], schema=self._movie_schema)
+        self._df.persist(storageLevel=StorageLevel.MEMORY_AND_DISK)
+        self._df.cache()
         self._loader = Loader()
-        
+
     def edit_row_and_visualize(self, imdb_id: str, movie: Movie):
-                
-        # Find a row with the same 'imdb_id'
-        existing_row = self._df.filter(f"imdb_id = '{imdb_id}'")
-        
-        # If there is a row with the same 'imdb_id', update it
+        # Update existing row or add new row
+        existing_row = self._df.filter(col("imdb_id") == imdb_id)
         if existing_row.count() > 0:
             for key, value in movie.__dict__.items():
                 if value is not None:
                     existing_row = existing_row.withColumn(key, lit(value))
-
-            self._df = self._df.filter(f"imdb_id != '{imdb_id}'").union(existing_row)
+            existing_row = existing_row.withColumn("touch_counter", col("touch_counter") + 1)
+            self._df = self._df.filter(col("imdb_id") != imdb_id).union(existing_row)
         else:
-            # If there is no row with the same 'imdb_id', add a new row
-            new_row = Row(**{**movie.__dict__, 'touch_counter': 0})
-            self._df = self._df.unionByName(self._spark.createDataFrame([new_row], schema=self._df.schema))
-        
-        # Increment the 'touch_counter' column for rows where 'imdb_id' matches imdb_id
-        self._df = self._df.withColumn('touch_counter', 
-                                    when(col('imdb_id') == imdb_id, self._df['touch_counter'] + 1)
-                                    .otherwise(self._df['touch_counter']))
-
-        # Filter rows where 'imdb_id' matches imdb_id and 'touch_counter' equals 2
-        filtered_df = self._df.filter((col('imdb_id') == imdb_id) & (col('touch_counter') == 2))
-        row = filtered_df.first()
-        
-        # Load the filtered DataFrame if it's not empty
-        if not filtered_df.isEmpty():
-            # Update dataframe to remove row
-            self._df = self._df.filter(f"imdb_id != '{imdb_id}'")
+            new_row = self._spark.createDataFrame([movie.__dict__], schema=self._df.schema)
+            new_row = new_row.withColumn("touch_counter", lit(1))
+            self._df = self._df.unionByName(new_row)
             
             # Clear cache
-            self._spark.catalog.clearCache()
-                        
-            # Load the data into Redis
-            row = filtered_df.first()
-            json_row = row.asDict()
-            json_row.pop('touch_counter')
-            movie = Movie.from_dict(json_row)
-            self._loader.load(movie)
+            new_row.unpersist(blocking=True)
+        # Clear cache
+        existing_row.unpersist(blocking=True)
         
+        self._send_to_loader(imdb_id)
+        
+        print(self._df.count())
+        # Show the DataFrame
         self._df.show()
+        
+
+    def _send_to_loader(self, imdb_id):
+        # Filter rows where 'imdb_id' matches imdb_id and 'touch_counter' equals 2
+        filtered_df = self._df.filter((col("imdb_id") == imdb_id) & (col("touch_counter") == 2))
+        filtered_df.unpersist(blocking=True)
+        # Load the filtered DataFrame if it's not empty
+        if not filtered_df.isEmpty():
+            row = filtered_df.first()
+
+            # Remove the filtered rows from the DataFrame
+            self._df = self._df.filter(col("imdb_id") != imdb_id)
+
+            # Persist the DataFrame in memory for faster access
+            self._df.cache()
+
+            # Load the data into Redis
+            movie = Movie.from_dict(row.asDict())
+            self._loader.load(movie)

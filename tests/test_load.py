@@ -12,5 +12,5 @@ if __name__ == "__main__":
     Config.validate_config()
 
     r = RedisInterface()
-    k = r.get_by_name("The Term")
+    k = r.get_all()
     print(json.dumps(k, indent=2))

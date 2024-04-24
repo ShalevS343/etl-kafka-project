@@ -13,7 +13,7 @@ class Config:
     MAX_PAGES = 200
     OMDB_API_KEY = getenv('OMDB_API_KEY')
     OMDB_URL = "http://www.omdbapi.com"
-    PAGE_PER_SCAN = 1
+    PAGE_PER_SCAN = 10
     TMDB_HEADERS = loads(getenv('TMDB_HEADERS'))
     TMDB_URLS = ["https://api.themoviedb.org/3/discover/movie",
                  "https://api.themoviedb.org/3/movie"]

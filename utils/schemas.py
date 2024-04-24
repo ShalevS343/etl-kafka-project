@@ -1,4 +1,4 @@
-from redisearch import TextField
+from redisearch import TextField, TagField
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 
 
@@ -7,11 +7,11 @@ class Schemas:
     REDIS_SCHEMA = [
         TextField('imdb_id'),
         TextField('movie_name', sortable=True),
-        TextField('genres'),
-        TextField('directors'),
-        TextField('lead_actors'),
+        TagField('genres'),
+        TagField('directors'),
+        TagField('lead_actors'),
         TextField('rating', sortable=True),
-        TextField('awards'),
+        TagField('awards'),
         TextField('release_date', sortable=True)
     ]
 

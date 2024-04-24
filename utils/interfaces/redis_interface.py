@@ -108,10 +108,10 @@ class RedisInterface(Singleton):
 
         return parsed_results
 
-    def _movie_search(self, field: MovieField, term: str) -> List:
+    def _movie_search(self, query: str, offset=0, limit=100) -> List:
         try:
             response: List = self._redis.execute_command(
-                'FT.SEARCH', self._redis_index, f'@{field.value}:{term}')
+                'FT.SEARCH', self._redis_index, query, 'LIMIT', offset, limit)
 
             if response[0] == 0:
                 return []
@@ -125,26 +125,29 @@ class RedisInterface(Singleton):
             logger.error(f"Error searching movies: {e}")
             return []
 
-    def get_by_id(self, imdb_id: str):
-        return self._movie_search(MovieField.IMDB_ID, f'{imdb_id}')
+    def get_by_imdb_id(self, imdb_id: str):
+        return self._movie_search(f'@{MovieField.IMDB_ID.value}:{imdb_id}')
 
-    def get_by_genre(self, genre):
-        return self._movie_search(MovieField.GENRES, f'*{genre}*')
+    def get_by_genres(self, genre):
+        return self._movie_search(f'@{MovieField.GENRES.value}:{genre}')
 
-    def get_by_director(self, director):
-        return self._movie_search(MovieField.DIRECTORS, f'*{director}*')
+    def get_by_directors(self, director):
+        return self._movie_search(f'@{MovieField.DIRECTORS.value}:{director}')
 
-    def get_by_year(self, year):
-        return self._movie_search(MovieField.RELEASE_DATE, year)
+    def get_by_release_date(self, year):
+        return self._movie_search(f'@{MovieField.RELEASE_DATE.value}:{year}')
 
-    def get_by_name(self, movie_name):
-        return self._movie_search(MovieField.MOVIE_NAME, movie_name)
+    def get_by_movie_name(self, movie_name):
+        return self._movie_search(f'@{MovieField.MOVIE_NAME.value}:{movie_name}')
 
     def get_by_rating(self, rating):
-        return self._movie_search(MovieField.RATING, rating)
+        return self._movie_search(f'@{MovieField.RATING.value}:{rating}')
 
-    def get_by_actor(self, actor):
-        return self._movie_search(MovieField.LEAD_ACTORS, f'*{actor}*')
+    def get_by_actors(self, actor):
+        return self._movie_search(f'@{MovieField.LEAD_ACTORS.value}:{actor}')
 
-    def get_by_award(self, award):
-        return self._movie_search(MovieField.AWARDS, f'*{award}*')
+    def get_by_awards(self, award):
+        return self._movie_search(f'@{MovieField.AWARDS.value}:{award}')
+    
+    def get_all(self):
+        return self._movie_search('*')

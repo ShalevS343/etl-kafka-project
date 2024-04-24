@@ -52,8 +52,9 @@ class Movie:
         if "movie_name" not in data or "rating" not in data or "genres" not in data or "lead_actors" not in data or \
                 "directors" not in data or "imdb_id" not in data or "awards" not in data or "release_date" not in data:
             raise ValueError("Invalid movie data")
-
-        return cls(**data)
+        _movie = Movie()
+        _movie.add(**data)
+        return _movie
 
     def add(self, **kwargs) -> None:
         """

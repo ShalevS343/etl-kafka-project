@@ -64,7 +64,7 @@ class Extractor():
                             start_index, start_index + Config.PAGE_PER_SCAN, self._extractor_interval)
 
                 break
-
+                
                 time.sleep(self._extractor_interval)
         except Exception as e:
             logger.error(e)
