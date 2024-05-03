@@ -1,16 +1,15 @@
-import json
-import os
+
 import sys
+import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(current_dir, '..'))
 
 from utils.config import Config
-from utils.interfaces.redis_interface import RedisInterface
+from utils.interfaces.kafka_interface import KafkaInterface
 
 if __name__ == "__main__":
     Config.validate_config()
-
-    r = RedisInterface()
-    k = r.get_all()
-    print(json.dumps(k, indent=2))
+    
+    k = KafkaInterface()
+    k.clean_buffer()

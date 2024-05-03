@@ -62,7 +62,7 @@ class PysparkInterface(Singleton):
         filtered_df.unpersist(blocking=True)
         # Load the filtered DataFrame if it's not empty
         if not filtered_df.isEmpty():
-            row = filtered_df.first()
+            row = filtered_df.first().asDict()
 
             # Remove the filtered rows from the DataFrame
             self._df = self._df.filter(col("imdb_id") != imdb_id)
@@ -71,5 +71,6 @@ class PysparkInterface(Singleton):
             self._df.cache()
 
             # Load the data into Redis
-            movie = Movie.from_dict(row.asDict())
+            row.pop('touch_counter')
+            movie = Movie.from_dict(row)
             self._loader.load(movie)

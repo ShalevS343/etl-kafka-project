@@ -1,5 +1,3 @@
-from typing import List
-
 from utils.data_structures.movie import Movie
 from utils.exceptions import NoTopicGivenError
 from utils.interfaces.pyspark_interface import PysparkInterface

@@ -13,3 +13,11 @@ class NoIMDBInMovieError(ValueError):
     def __init__(self, message="No IMDB ID in the movie!"):
         self.message = message
         super().__init__(self.message)
+        
+class PotentialSqlInjectionError(ValueError):
+    """
+    Custom exception raised when a potential SQL injection is detected.
+    """
+    def __init__(self, message="Potential SQL injection detected!"):
+        self.message = message
+        super().__init__(self.message)

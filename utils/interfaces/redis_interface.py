@@ -2,29 +2,18 @@ import redis
 from redis.exceptions import ResponseError
 from redisearch import Client
 
-from enum import Enum
+import json
 import logging
 from typing import List
 
 from utils.config import Config
 from utils.data_structures.movie import Movie
-from utils.exceptions import NoIMDBInMovieError
+from utils.exceptions import NoIMDBInMovieError, PotentialSqlInjectionError
 from utils.schemas import Schemas
 from utils.singleton import Singleton
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-class MovieField(Enum):
-    IMDB_ID = 'imdb_id'
-    MOVIE_NAME = 'movie_name'
-    GENRES = 'genres'
-    DIRECTORS = 'directors'
-    LEAD_ACTORS = 'lead_actors'
-    RATING = 'rating'
-    AWARDS = 'awards'
-    RELEASE_DATE = 'release_date'
-
 
 class RedisInterface(Singleton):
     def __init__(self):
@@ -39,6 +28,7 @@ class RedisInterface(Singleton):
             # Try to get information about the index
             self._redis.execute_command('FT.INFO', self._redis_index)
         except redis.exceptions.ResponseError:
+            logger.info(f"Creating new index!")
             self._create_index()
 
     def _create_index(self):
@@ -108,8 +98,11 @@ class RedisInterface(Singleton):
 
         return parsed_results
 
-    def _movie_search(self, query: str, offset=0, limit=100) -> List:
+    def movie_search(self, query: str, offset=0, limit=10) -> List:
         try:
+            if any(char in query for char in [';', '--']):
+                raise PotentialSqlInjectionError()
+            
             response: List = self._redis.execute_command(
                 'FT.SEARCH', self._redis_index, query, 'LIMIT', offset, limit)
 
@@ -124,30 +117,7 @@ class RedisInterface(Singleton):
         except ResponseError as e:
             logger.error(f"Error searching movies: {e}")
             return []
-
-    def get_by_imdb_id(self, imdb_id: str):
-        return self._movie_search(f'@{MovieField.IMDB_ID.value}:{imdb_id}')
-
-    def get_by_genres(self, genre):
-        return self._movie_search(f'@{MovieField.GENRES.value}:{genre}')
-
-    def get_by_directors(self, director):
-        return self._movie_search(f'@{MovieField.DIRECTORS.value}:{director}')
-
-    def get_by_release_date(self, year):
-        return self._movie_search(f'@{MovieField.RELEASE_DATE.value}:{year}')
-
-    def get_by_movie_name(self, movie_name):
-        return self._movie_search(f'@{MovieField.MOVIE_NAME.value}:{movie_name}')
-
-    def get_by_rating(self, rating):
-        return self._movie_search(f'@{MovieField.RATING.value}:{rating}')
-
-    def get_by_actors(self, actor):
-        return self._movie_search(f'@{MovieField.LEAD_ACTORS.value}:{actor}')
-
-    def get_by_awards(self, award):
-        return self._movie_search(f'@{MovieField.AWARDS.value}:{award}')
     
-    def get_all(self):
-        return self._movie_search('*')
+    def publish_update(self, movie: Movie) -> None:
+        # Publish the payload to a specific channel in Redis Pub/Sub
+        self._redis.publish('movie_updates', json.dumps(movie.__dict__))

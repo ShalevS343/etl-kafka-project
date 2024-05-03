@@ -18,3 +18,4 @@ class RedisLoader(BaseLoader):
         """
         
         self._redis_interface.set_value(movie)
+        self._redis_interface.publish_update(movie)
