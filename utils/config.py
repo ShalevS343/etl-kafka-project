@@ -65,6 +65,9 @@ class Config:
         cls._validate_redis_uri()
         cls._validate_tmdb_headers()
         cls._validate_cloudkafka_config()
+        cls._validate_kafka_topics()
+        cls._validate_max_messages()
+        cls._validate_extract_interval()
 
     @classmethod
     def _validate_page_per_scan(cls):
@@ -117,3 +120,19 @@ class Config:
             if key not in cls.CONSUMER_CONFIG or not cls.CONSUMER_CONFIG[key]:
                 raise ValueError(
                     f"Invalid consumer configuration. Missing or empty value for '{key}'.")
+
+    @classmethod
+    def _validate_kafka_topics(cls):
+        if not cls.KAFKA_TOPICS or len(cls.KAFKA_TOPICS) == 0:
+            raise ValueError("KAFKA_TOPICS must be provided and non-empty.")
+
+    @classmethod
+    def _validate_max_messages(cls):
+        if not isinstance(cls.MAX_MESSAGES, int) or cls.MAX_MESSAGES <= 0:
+            raise ValueError("MAX_MESSAGES must be a positive integer.")
+
+    @classmethod
+    def _validate_extract_interval(cls):
+        if not isinstance(cls.EXTRACT_INTERVAL, int) or cls.EXTRACT_INTERVAL <= 0:
+            raise ValueError("EXTRACT_INTERVAL must be a positive integer.")
+

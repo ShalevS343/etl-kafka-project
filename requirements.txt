@@ -8,5 +8,4 @@ redisearch==2.1.1
 Requests==2.31.0
 starlette==0.37.2
 starlette_graphene3==0.6.0
-
-
+uvicorn==0.29.0

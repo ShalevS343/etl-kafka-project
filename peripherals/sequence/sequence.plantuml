@@ -1,0 +1,336 @@
+@startuml
+
+class DataFetcher {
+    + start(start_index: int, new_movies: Dict[str, Movie]) : Dict[str, Movie]
+    - _fetch_data(params: Parameters, worker_number: int, range_index: int) : Dict[str, Movie]
+}
+
+DataFetcher --|> ABC
+
+class Extractor {
+    - _data_fetchers: Dict[str, DataFetcher]
+    - _extractor_interval: int
+    - _kafka_interface: KafkaInterface
+    + __init__(data_fetchers: Dict[str, DataFetcher], extractor_interval: int)
+    + start() : None
+    - _extract() : None
+    - _produce(topic_data: Dict[str, Dict[str, Movie]]) : None
+}
+
+class KafkaInterface {
+    + produce_to_topic(topic: str, message: Dict[str, Movie]) : None
+    + update_timeout_interval(interval: int) : None
+}
+
+class Movie {
+    - movie_name: str
+    - rating: str
+    - genres: str
+    - lead_actors: str
+    - directors: str
+    - imdb_id: str
+    - awards: str
+    - release_date: str
+}
+
+Extractor --|> Logging
+Extractor *-- DataFetcher : contains
+Extractor *-- KafkaInterface : contains
+DataFetcher --|> ABC
+
+class OMDBDataFetcher {
+    - _url: str
+    + __init__()
+    + start(start_index: int, new_movies: Dict[str, Movie]) : Dict[str, Movie]
+    - _fetch_data(params: Parameters, worker_number: int, range_index: int) : Dict[str, Movie]
+    - _api_call(imdb_id: str) : Dict[str, Movie]
+    - _format_response(imdb_id: str, response_json: dict) : Dict[str, Movie]
+}
+
+OMDBDataFetcher --|> DataFetcher
+
+class ThreadPoolManager {
+    + execute_threads(callback: Callable, params: Parameters) : Dict[str, Movie]
+}
+
+class TMDBDataFetcher {
+    - _urls: List[str]
+    - _redis_interface: RedisInterface
+    + __init__()
+    + start(page_index: int) : Dict[str, Movie]
+    - _fetch_data(params: Parameters, worker_number: int, range_index: int) : Dict[str, Movie]
+    - _api_call_page(page: int) : Dict[str, Movie]
+    - _format_data_page(data: dict) : Dict[str, Movie]
+    - _fetch_rating(params: Parameters, worker_number: int, range_index: int) : Dict[str, Movie]
+    - _api_call_rating(movie_id: str, movie_name: str) : Dict[str, Movie]
+    - _format_data_rating(response: dict, movie_name: str) : Dict[str, Movie]
+}
+
+TMDBDataFetcher --|> DataFetcher
+
+class BaseLoader {
+    {abstract} + load(movie: Movie) : None
+}
+
+BaseLoader --|> ABC
+
+class Loader {
+    - _redis_loader: RedisLoader
+    + __init__()
+    + load(movie: Movie) : None
+}
+
+Loader --|> Singleton
+
+class RedisLoader {
+    - _redis_interface: RedisInterface
+    + __init__()
+    + load(movie: Movie) : None
+}
+
+RedisLoader --|> BaseLoader
+
+class RedisInterface {
+    + set_value(movie: Movie) : None
+    + publish_update(movie: Movie) : None
+}
+
+class ActorHandler {
+    - _df: DataFrame
+    + __init__()
+    + get_actor(imdb_id: str) : str
+}
+
+ActorHandler --|> pd.DataFrame
+
+class ApiEntityHandler {
+    - _kafka_interface: KafkaInterface
+    - _pyspark_interface: PysparkInterface
+    - _bafta_handler: BaftaHandler
+    - _oscar_handler: OscarHandler
+    - _genre_handler: GenreHandler
+    - _actor_handler: ActorHandler
+    + __init__()
+    + start_processing() : None
+    + send_to_handler(topic: str, data: dict) : None
+    - _process_message(movie: Movie) : None
+    - _gather_awards(movie_name: str) : str
+}
+
+ApiEntityHandler *-- Movie : contains
+
+class AwardsHandler {
+    {abstract} + get_awards(film: str) : List[str]
+}
+
+AwardsHandler --|> ABC
+
+class BaftaHandler {
+    - _df: DataFrame
+    + __init__()
+    + get_awards(film: str) : List[str]
+}
+
+BaftaHandler --|> AwardsHandler
+
+class GenreHandler {
+    - _df: DataFrame
+    + __init__()
+    + get_genre(imdb_id: str) : str
+}
+
+GenreHandler *-- "1" DataFrame : contains
+
+class OscarHandler {
+    - _df: DataFrame
+    + __init__()
+    + get_awards(film: str) : List[str]
+}
+
+OscarHandler --|> AwardsHandler
+
+class Transformer {
+    - _api_entity_handler: ApiEntityHandler
+    + __init__()
+    + transform()
+}
+
+Transformer *-- ApiEntityHandler : contains
+
+class Query {
+    + movies(imdb_id: String, movie_name: String, genres: String, directors: String, lead_actors: String, rating: String, awards: String, release_date: String): List<MovieSchema>
+    + resolve_movies(info, **kwargs)
+}
+
+class Subscription {
+    + movie_updates: List<MovieSchema>
+    + subscribe_movie_updates(root, info): async
+}
+
+class MovieSchema {
+    - imdb_id: String
+    - movie_name: String
+    - genres: String
+    - directors: String
+    - lead_actors: String
+    - rating: String
+    - awards: String
+    - release_date: String
+}
+
+class SubscriptionSchema {
+    + movie_updates: List<MovieSchema>
+}
+
+Query "1" --> "*" MovieSchema : returns
+Subscription "1" --> "*" MovieSchema : yields
+Subscription "1" --> "*" MovieSchema : returns
+
+class KafkaInterface {
+    - _consumer: Consumer
+    - _producer: Producer
+    - _timeout_interval: int
+    - _topics: List[str]
+    + __init__(timeout_interval: int = 10)
+    + update_timeout_interval(interval: int): None
+    + produce_to_topic(topic: str, data: Dict[str, Movie]): None
+    + subscribe_to_topics(callback: Callable): None
+    + clean_buffer(): None
+}
+
+KafkaInterface ..> Consumer
+KafkaInterface ..> Producer
+
+class PysparkInterface {
+    - _spark: SparkSession
+    - _movie_schema: StructType
+    - _df: DataFrame
+    - _loader: Loader
+    + __init__(spark_master: str = "local[*]"): None
+    + edit_row_and_visualize(imdb_id: str, movie: Movie): None
+    - _send_to_loader(imdb_id: str): None
+}
+
+PysparkInterface ..> SparkSession
+PysparkInterface ..> DataFrame
+PysparkInterface ..> Loader
+
+class RedisInterface {
+    - _redis: StrictRedis
+    - _redis_index: str
+    - _client: Client
+    + __init__(): None
+    - _index_exists(): None
+    - _create_index(): None
+    + set_value(movie: Movie): int
+    - _format_data(movie: Movie): Movie
+    - _decode(results): List[dict]
+    - _parse(response: List): List[bytes]
+    + movie_search(query: str, offset=0, limit=10): List
+    + publish_update(movie: Movie): None
+}
+
+RedisInterface ..> StrictRedis
+RedisInterface ..> Client
+
+class Config {
+    - CLOUDKARAFKA_HOSTNAME: str
+    - CLOUDKARAFKA_USERNAME: str
+    - CLOUDKARAFKA_PASSWORD: str
+    - EXTRACT_INTERVAL: int
+    - WORKERS: int
+    - MAX_PAGES: int
+    - OMDB_API_KEY: str
+    - OMDB_URL: str
+    - PAGE_PER_SCAN: int
+    - TMDB_HEADERS: dict
+    - TMDB_URLS: List[str]
+    - PRODUCER_CONFIG: dict
+    - CONSUMER_CONFIG: dict
+    - REDIS_INDEX: str
+    - REDIS_URI: str
+    - KAFKA_TOPICS: List[str]
+    - MAX_MESSAGES: int
+    + validate_config(): None
+    - _validate_page_per_scan(): None
+    - _validate_workers(): None
+    - _validate_max_pages(): None
+    - _validate_omdb_api_key(): None
+    - _validate_redis_uri(): None
+    - _validate_tmdb_headers(): None
+    - _validate_cloudkafka_config(): None
+    - _validate_kafka_topics(): None
+    - _validate_max_messages(): None
+    - _validate_extract_interval(): None
+}
+
+class NoTopicGivenError {
+    - message: str
+    + __init__(message: str = "No topic was given in the message!"): None
+}
+
+class NoIMDBInMovieError {
+    - message: str
+    + __init__(message: str = "No IMDB ID in the movie!"): None
+}
+
+class PotentialSqlInjectionError {
+    - message: str
+    + __init__(message: str = "Potential SQL injection detected!"): None
+}
+
+class Schemas {
+    + REDIS_SCHEMA: List
+    + PYSPARK_SCHEMA: StructType
+    + class MovieSchema: ObjectType
+}
+
+class RedisSchema {
+    - imdb_id: TextField
+    - movie_name: TextField
+    - genres: TagField
+    - directors: TagField
+    - lead_actors: TagField
+    - rating: TextField
+    - awards: TagField
+    - release_date: TextField
+}
+
+class PySparkSchema {
+    - imdb_id: StructField
+    - movie_name: StructField
+    - genres: StructField
+    - directors: StructField
+    - lead_actors: StructField
+    - rating: StructField
+    - awards: StructField
+    - release_date: StructField
+    - touch_counter: StructField
+}
+
+class MovieSchema {
+    - imdb_id: String
+    - movie_name: String
+    - genres: String
+    - directors: String
+    - lead_actors: String
+    - rating: String
+    - awards: String
+    - release_date: String
+}
+
+Schemas *-- RedisSchema
+Schemas *-- PySparkSchema
+Schemas *-- MovieSchema
+
+class SingletonMeta {
+    - _instances: Dict[type, object]
+    + __call__(cls: type, *args, **kwargs): object
+}
+
+class Singleton {
+}
+
+SingletonMeta ..> Singleton : metaclass
+
+@enduml
