@@ -1,0 +1,11 @@
+confluent_kafka==2.3.0
+graphene==3.3
+pandas==2.2.1
+pyspark==3.5.0
+python-dotenv==1.0.1
+redis==3.5.3
+redisearch==2.1.1
+Requests==2.31.0
+starlette==0.37.2
+starlette_graphene3==0.6.0
+uvicorn==0.29.0
