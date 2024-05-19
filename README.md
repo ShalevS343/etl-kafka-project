@@ -1,4 +1,4 @@
-# etl-kafka-project
+# movie-etl
 
 ## Overview
 This project is an ETL process project that revolves around Extract, Transform and Load. It uses Kafka as its message broker and a variety of data fetchers to fetch data from the APIs, enrich it with CSV files and store it in Redis and GraphQL.
