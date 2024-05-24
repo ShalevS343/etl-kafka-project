@@ -33,7 +33,7 @@ class TMDBDataFetcher(DataFetcher):
 
         # Prepare the parameters for fetching the movie pages
         fetch_params: Parameters = Parameters(
-            workers=Config.WORKERS, steps=10, start_index=page_index)
+            workers=Config.WORKERS, steps=10, start_index=page_index, max_range=page_index + Config.PAGE_PER_SCAN)
         # Fetch the movies from the TMDB API and check if they exist in the redis database
         tmdb_data: Dict[str, Movie] = ThreadPoolManager.execute_threads(
             self._fetch_data, params=fetch_params)
@@ -42,7 +42,6 @@ class TMDBDataFetcher(DataFetcher):
 
         # Prepare the parameters for fetching the rating
         fetch_params.workers = 2 * Config.WORKERS
-        fetch_params.steps = 1
         fetch_params.movies = tmdb_data
 
         # Fetch the rating from the TMDB API and merge it

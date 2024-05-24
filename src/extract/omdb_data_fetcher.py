@@ -29,7 +29,7 @@ class OMDBDataFetcher(DataFetcher):
             return {}
 
         omdb_fetch_params = Parameters(max_range=math.ceil(len(new_movies) / Config.WORKERS),
-                                       workers=Config.WORKERS, movies=new_movies, start_index=start_index)
+                                       workers=Config.WORKERS, movies=new_movies)
         omdb_data = ThreadPoolManager.execute_threads(
             self._fetch_data, omdb_fetch_params)
         return omdb_data

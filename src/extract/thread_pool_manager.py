@@ -22,15 +22,14 @@ class ThreadPoolManager:
         with ThreadPoolExecutor(params.workers) as executor:
             data: Dict[str, Movie] = {}
 
-            range_index: int = 0
-            steps_to_skip: int = min(
-                params.max_range + 1 - range_index, params.steps + range_index)
-            # The loop will iterate from the start_index to the max_range by steps of
-            for i in range(params.start_index, params.max_range, steps_to_skip):
-                range_index: int = i
-                steps_to_skip: int = min(
-                    params.max_range + 1 - range_index, params.steps + range_index)
-
+            range_index: int = params.start_index
+            
+            tmpd = params.__dict__.copy()
+            tmpd.pop('movies')
+            print(tmpd)
+            
+            while range_index < params.max_range:
+                
                 workers = []
                 for worker_number in range(params.workers):
                     workers.append(executor.submit(
@@ -44,4 +43,6 @@ class ThreadPoolManager:
                     else:
                         for result in worker_result:
                             data.update(result)
+                            
+                range_index += params.steps
             return data

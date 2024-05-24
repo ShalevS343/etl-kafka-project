@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class Extractor():
-    def __init__(self, data_fetchers: Dict[str, DataFetcher], extractor_interval=300):
+    def __init__(self, data_fetchers: Dict[str, DataFetcher], extractor_interval=Config.EXTRACT_INTERVAL):
         """
         Initializes the Extractor class.
 
@@ -22,7 +22,6 @@ class Extractor():
         self._data_fetchers: Dict[str, DataFetcher] = data_fetchers
         self._extractor_interval: int = extractor_interval
         self._kafka_interface = KafkaInterface()
-        self._kafka_interface.update_timeout_interval(self._extractor_interval)
 
     def start(self) -> None:
         """
@@ -47,7 +46,7 @@ class Extractor():
 
                 # Fetch new movies using the first fetcher
                 new_movie_data: Dict[str, Movie] = first_fetcher.start(start_index)
-
+                
                 topic_data: Dict[str, Dict] = {topic: new_movie_data}
                 # For every other fetcher send the new movies to return only the data for the needed movies
                 for topic, data_fetcher in list(self._data_fetchers.items())[1:]:
@@ -63,7 +62,6 @@ class Extractor():
                 logger.info("Next scan for pages %d-%d in %d seconds",
                             start_index, start_index + Config.PAGE_PER_SCAN, self._extractor_interval)
 
-                break
                 
                 time.sleep(self._extractor_interval)
         except Exception as e:

@@ -22,5 +22,7 @@ To run the user interface, you will need to run the following command in your te
 
 `python3 server.py`
 
+After running the server, open http://localhost:8000 (default port) in your browser.
+
 ### Notes
 Please make sure that you read the config.py and edit it to your needs.

@@ -20,10 +20,10 @@ def extract_process():
     omdb = OMDBDataFetcher()
 
     fetchers: Dict[str, DataFetcher] = {'tmdb-api': tmdb, 'omdb-api': omdb}
-    e = Extractor(fetchers, Config.EXTRACT_INTERVAL)
+    e = Extractor(fetchers)
     e.start()
 
-def transform_process():
+def transform_process():    
     # Transform and load process
     t = Transformer()
     t.transform()
