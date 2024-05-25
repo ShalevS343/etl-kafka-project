@@ -24,10 +24,6 @@ class ThreadPoolManager:
 
             range_index: int = params.start_index
             
-            tmpd = params.__dict__.copy()
-            tmpd.pop('movies')
-            print(tmpd)
-            
             while range_index < params.max_range:
                 
                 workers = []
